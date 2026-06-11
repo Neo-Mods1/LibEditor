@@ -9,7 +9,7 @@ class JniBridge(private val context: Context) {
 
     companion object {
         init {
-            System.loadLibrary("libeditor_jni")
+            System.loadLibrary("NeoLibEditor")
         }
 
         private val json = Json { ignoreUnknownKeys = true; isLenient = true }

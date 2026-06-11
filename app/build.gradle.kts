@@ -21,23 +21,36 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         }
-
     }
-    
+
     lint {
         checkReleaseBuilds = false
         abortOnError = false
         baseline = null
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = rootProject.file("release.keystore")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            isOptimizeResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -52,6 +65,18 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/jniLibs")
+        }
     }
 }
 
