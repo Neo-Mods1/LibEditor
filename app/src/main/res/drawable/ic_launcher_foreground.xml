@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background hex pattern -->
+    <group
+        android:translateX="18"
+        android:translateY="18">
+        <!-- Dark base -->
+        <path
+            android:fillColor="#1A1A2E"
+            android:pathData="M0,0h72v72h-72z" />
+
+        <!-- Grid lines -->
+        <path
+            android:strokeColor="#16213E"
+            android:strokeWidth="0.5"
+            android:pathData="M0,18h72M0,36h72M0,54h72M18,0v72M36,0v72M54,0v72" />
+
+        <!-- Hex bytes background -->
+        <path
+            android:fillColor="#0F3460"
+            android:fillAlpha="0.4"
+            android:pathData="M4,8h8v4h-8zM16,8h8v4h-8zM28,8h8v4h-8zM4,16h8v4h-8zM16,16h8v4h-8zM28,16h8v4h-8zM4,24h8v4h-8zM16,24h8v4h-8z" />
+
+        <!-- Binary/patch symbol -->
+        <path
+            android:fillColor="#E94560"
+            android:pathData="M36,30 L42,30 L42,42 L36,42 Z" />
+        <path
+            android:fillColor="#E94560"
+            android:pathData="M46,30 L52,30 L52,42 L46,42 Z" />
+
+        <!-- Chevron arrow -->
+        <path
+            android:strokeColor="#4ECDC4"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000"
+            android:pathData="M26,48 L36,56 L46,48" />
+
+        <!-- Hex text "NE" -->
+        <path
+            android:fillColor="#4ECDC4"
+            android:pathData="M44,48 L44,58 M44,48 L50,54 L50,58 M52,48 L52,58 M52,48 L58,48 L58,53 L54,58 L58,58" />
+    </group>
+</vector>
