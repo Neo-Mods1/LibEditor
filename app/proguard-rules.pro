@@ -1,0 +1,2 @@
+-keep class com.neomods.libeditor.service.JniBridge { *; }
+-keepclassmembers class com.neomods.libeditor.model.** { *; }

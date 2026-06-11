@@ -1,0 +1,20 @@
+[package]
+name = "libeditor"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "libeditor"
+crate-type = ["cdylib"]
+
+[dependencies]
+jni = "0.21"
+goblin = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,33 @@
+# Built files
+*.iml
+.gradle
+/local.properties
+/.idea
+/build
+/captures
+.externalNativeBuild
+.cxx
+/app/build
+/app/src/main/jniLibs
+
+# Rust
+/rust/target
+/rust/**/*.so
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Keystore
+*.keystore
+*.jks
+debug.keystore
+
+# Environment
+.env
+.env.local
