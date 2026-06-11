@@ -24,9 +24,9 @@ Thumbs.db
 *~
 
 # Keystore
-*.keystore
-*.jks
-debug.keystore
+# *.keystore
+# *.jks
+# debug.keystore
 
 # Environment
 .env
