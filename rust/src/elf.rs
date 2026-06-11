@@ -70,7 +70,7 @@ impl ElfData {
             return Err(ElfError::OffsetOutOfBounds(end));
         }
 
-        Ok(self.bytes[offset as usize..end].to_vec())
+        Ok(self.bytes[offset as usize..end as usize].to_vec())
     }
 
     pub fn write_bytes(&mut self, offset: u64, data: &[u8]) -> Result<(), ElfError> {

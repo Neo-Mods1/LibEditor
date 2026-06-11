@@ -3,8 +3,9 @@ pub mod patch;
 pub mod string;
 
 use elf::ElfData;
+use elf::bytes_to_hex;
 use jni::JNIEnv;
-use jni::objects::{JClass, JObjectArray, JString, JValue};
+use jni::objects::{JClass, JString};
 use jni::sys::{jint, jlong, jstring};
 use patch::{PatchApplier, PatchEntry};
 use std::path::Path;
