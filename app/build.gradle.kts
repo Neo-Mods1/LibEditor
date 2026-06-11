@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "com.neomods.libeditor"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
@@ -104,6 +104,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("com.airbnb.android:lottie-compose:6.6.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
