@@ -38,9 +38,6 @@ fun MainScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
-            context.contentResolver.takePersistableUriPermission(
-                it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
             viewModel.loadLibraryFromUri(it)
         }
     }

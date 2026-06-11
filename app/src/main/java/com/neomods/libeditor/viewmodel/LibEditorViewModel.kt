@@ -13,10 +13,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class LibEditorViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: LibEditorRepository
+    private val context = application
 
     private val _libraryInfo = MutableStateFlow(LibraryInfo())
     val libraryInfo: StateFlow<LibraryInfo> = _libraryInfo.asStateFlow()
@@ -73,24 +75,58 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun loadLibraryFromUri(uri: Uri) {
-        val context = getApplication<Application>()
-        val path = getPathFromUri(uri) ?: run {
-            _errorMessage.value = "Could not resolve file path"
-            return
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            try {
+                val path = withContext(Dispatchers.IO) {
+                    copyUriToInternalStorage(uri)
+                }
+                if (path != null) {
+                    loadLibrary(path)
+                } else {
+                    _errorMessage.value = "Could not read file"
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Error reading file: ${e.message}"
+                _isLoading.value = false
+            }
         }
-        loadLibrary(path)
     }
 
-    private fun getPathFromUri(uri: Uri): String? {
-        val context = getApplication<Application>()
-        if (uri.scheme == "file") return uri.path
-        val cursor = context.contentResolver.query(uri, null, null, null, null) ?: return null
-        return cursor.use {
-            if (it.moveToFirst()) {
-                val idx = it.getColumnIndex("_data")
-                if (idx >= 0) it.getString(idx) else null
-            } else null
+    private fun copyUriToInternalStorage(uri: Uri): String? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+            val fileName = getFileName(uri) ?: "temp_library.so"
+            val tempFile = File(context.filesDir, "loaded_libs")
+            tempFile.mkdirs()
+            val outputFile = File(tempFile, fileName)
+
+            inputStream.use { input ->
+                outputFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            outputFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
+    }
+
+    private fun getFileName(uri: Uri): String? {
+        var name = "temp_library.so"
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val idx = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0) {
+                    name = it.getString(idx) ?: name
+                }
+            }
+        }
+        return name
     }
 
     fun readOffset(offsetHex: String, length: Int = 4) {
