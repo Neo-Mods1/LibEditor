@@ -2,6 +2,7 @@ package com.neomods.libeditor.service
 
 import android.content.Context
 import com.neomods.libeditor.model.*
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
 

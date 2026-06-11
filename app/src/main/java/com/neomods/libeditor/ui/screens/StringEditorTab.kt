@@ -233,7 +233,7 @@ fun ReplaceStringDialog(
                                 color = MaterialTheme.colorScheme.error
                             )
                         } else {
-                            Text("${it.toByteArray().size}/${string.length} bytes")
+                            Text("${replacement.toByteArray().size}/${string.length} bytes")
                         }
                     }
                 )
