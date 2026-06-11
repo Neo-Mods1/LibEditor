@@ -1,22 +1,23 @@
 package com.neomods.libeditor.ui.screens
 
-import androidx.compose.foundation.clickable
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.neomods.libeditor.model.ExtractedString
+import com.neomods.libeditor.ui.view.FastScrollerRecyclerView
+import com.neomods.libeditor.ui.view.StringAdapter
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 
 @Composable
@@ -28,6 +29,7 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
     val isLoading by viewModel.isLoading.collectAsState()
 
     var showReplaceDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -87,20 +89,31 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(filteredStrings, key = { "${it.offset}_${it.value}" }) { string ->
-                    StringRow(
-                        string = string,
-                        onClick = {
-                            viewModel.selectString(string)
-                            showReplaceDialog = true
-                        }
-                    )
+            val stringAdapter = remember {
+                StringAdapter { string ->
+                    viewModel.selectString(string)
+                    showReplaceDialog = true
                 }
             }
+
+            LaunchedEffect(filteredStrings) {
+                stringAdapter.submitList(filteredStrings)
+            }
+
+            AndroidView(
+                factory = {
+                    FastScrollerRecyclerView(context).apply {
+                        layoutManager = LinearLayoutManager(context)
+                        adapter = stringAdapter
+                        setHasFixedSize(true)
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.MATCH_PARENT
+                        )
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 
@@ -116,61 +129,6 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
                 showReplaceDialog = false
             }
         )
-    }
-}
-
-@Composable
-fun StringRow(
-    string: ExtractedString,
-    onClick: () -> Unit
-) {
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = string.value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontFamily = FontFamily.Monospace
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "0x${string.offset.toString(16).uppercase()}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = string.encoding.displayName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "${string.length}B",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 

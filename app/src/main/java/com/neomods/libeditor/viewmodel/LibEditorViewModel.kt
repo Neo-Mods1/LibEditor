@@ -80,7 +80,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             _errorMessage.value = null
             try {
                 val path = withContext(Dispatchers.IO) {
-                    copyUriToInternalStorage(uri)
+                    copyUriToEditor(uri)
                 }
                 if (path != null) {
                     loadLibrary(path)
@@ -95,13 +95,11 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private fun copyUriToInternalStorage(uri: Uri): String? {
+    private fun copyUriToEditor(uri: Uri): String? {
         return try {
             val inputStream = context.contentResolver.openInputStream(uri) ?: return null
             val fileName = getFileName(uri) ?: "temp_library.so"
-            val tempFile = File(context.filesDir, "loaded_libs")
-            tempFile.mkdirs()
-            val outputFile = File(tempFile, fileName)
+            val outputFile = File(repository.getEditorDir(), fileName)
 
             inputStream.use { input ->
                 outputFile.outputStream().use { output ->
@@ -200,7 +198,29 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         _patches.value = emptyList()
     }
 
-    fun applyAllPatches(outputPath: String? = null) {
+    fun applySinglePatch(patchId: String) {
+        val patch = _patches.value.find { it.id == patchId } ?: run {
+            _errorMessage.value = "Patch not found"
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            val result = withContext(Dispatchers.IO) {
+                repository.applySinglePatch(patch)
+            }
+            result.onSuccess { path ->
+                _successMessage.value = "Patch applied to: $path"
+                reloadFromEditor()
+            }.onFailure { e ->
+                _errorMessage.value = e.message ?: "Failed to apply patch"
+            }
+            _isLoading.value = false
+        }
+    }
+
+    fun applyAllPatches() {
         val enabledPatches = _patches.value.filter { it.enabled }
         if (enabledPatches.isEmpty()) {
             _errorMessage.value = "No enabled patches"
@@ -211,14 +231,31 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             _isLoading.value = true
             _errorMessage.value = null
             val result = withContext(Dispatchers.IO) {
-                repository.applyPatches(enabledPatches, outputPath)
+                repository.applyPatches(enabledPatches)
             }
             result.onSuccess { path ->
                 _successMessage.value = "Patches saved to: $path"
+                reloadFromEditor()
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Failed to apply patches"
             }
             _isLoading.value = false
+        }
+    }
+
+    private fun reloadFromEditor() {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repository.reloadFromEditor()
+            }
+            result.onSuccess { path ->
+                val infoResult = withContext(Dispatchers.IO) {
+                    repository.getLibraryInfo(path)
+                }
+                infoResult.onSuccess { info ->
+                    _libraryInfo.value = info
+                }
+            }
         }
     }
 
@@ -254,7 +291,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         _selectedString.value = string
     }
 
-    fun replaceSelectedString(replacement: String, outputPath: String? = null) {
+    fun replaceSelectedString(replacement: String) {
         val selected = _selectedString.value ?: run {
             _errorMessage.value = "No string selected"
             return
@@ -272,13 +309,13 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                 repository.replaceString(
                     offset = selected.offset,
                     originalLength = selected.length,
-                    replacement = replacement,
-                    outputPath = outputPath
+                    replacement = replacement
                 )
             }
             result.onSuccess { path ->
                 _successMessage.value = "String replaced, saved to: $path"
                 _selectedString.value = null
+                reloadFromEditor()
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Failed to replace string"
             }

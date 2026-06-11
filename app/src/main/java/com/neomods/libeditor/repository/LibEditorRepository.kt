@@ -2,16 +2,24 @@ package com.neomods.libeditor.repository
 
 import com.neomods.libeditor.model.*
 import com.neomods.libeditor.service.JniBridge
+import java.io.File
 
 class LibEditorRepository(private val jniBridge: JniBridge) {
 
     private var currentFilePath: String? = null
+    private val editorDir = File("/storage/emulated/0/Editor")
+
+    init {
+        editorDir.mkdirs()
+    }
 
     fun getCurrentFilePath(): String? = currentFilePath
 
     fun setCurrentFilePath(path: String) {
         currentFilePath = path
     }
+
+    fun getEditorDir(): File = editorDir
 
     fun getLibraryInfo(filePath: String): Result<LibraryInfo> {
         currentFilePath = filePath
@@ -23,9 +31,15 @@ class LibEditorRepository(private val jniBridge: JniBridge) {
         return jniBridge.readOffset(path, offset, length)
     }
 
+    fun applySinglePatch(patch: PatchEntry, outputPath: String? = null): Result<String> {
+        val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
+        val out = outputPath ?: getEditorOutputPath(path)
+        return jniBridge.applyPatches(path, listOf(patch), out)
+    }
+
     fun applyPatches(patches: List<PatchEntry>, outputPath: String? = null): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: jniBridge.generateOutputPath(path)
+        val out = outputPath ?: getEditorOutputPath(path)
         return jniBridge.applyPatches(path, patches, out)
     }
 
@@ -41,12 +55,28 @@ class LibEditorRepository(private val jniBridge: JniBridge) {
         outputPath: String? = null
     ): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: jniBridge.generateOutputPath(path, "string_patched")
+        val out = outputPath ?: getEditorOutputPath(path)
         return jniBridge.replaceString(path, offset, originalLength, replacement, out)
     }
 
-    fun generateOutputPath(suffix: String = "patched"): String {
-        val path = currentFilePath ?: return "output.so"
-        return jniBridge.generateOutputPath(path, suffix)
+    fun getEditorOutputPath(originalPath: String): String {
+        val file = File(originalPath)
+        val name = file.name
+        return File(editorDir, name).absolutePath
+    }
+
+    fun getEditorOutputPathForLib(libName: String): String {
+        return File(editorDir, libName).absolutePath
+    }
+
+    fun reloadFromEditor(): Result<String> {
+        val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
+        val file = File(path)
+        val editorPath = File(editorDir, file.name).absolutePath
+        if (File(editorPath).exists()) {
+            currentFilePath = editorPath
+            return Result.success(editorPath)
+        }
+        return Result.failure(IllegalStateException("File not found in Editor folder"))
     }
 }

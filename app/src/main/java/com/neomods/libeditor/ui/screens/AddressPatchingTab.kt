@@ -170,7 +170,8 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
                             editingPatch = patch
                             showPatchDialog = true
                         },
-                        onDelete = { viewModel.deletePatch(patch.id) }
+                        onDelete = { viewModel.deletePatch(patch.id) },
+                        onApplySingle = { viewModel.applySinglePatch(patch.id) }
                     )
                 }
             }
@@ -206,7 +207,8 @@ fun PatchCard(
     patch: PatchEntry,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onApplySingle: () -> Unit = {}
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -234,6 +236,9 @@ fun PatchCard(
                         checked = patch.enabled,
                         onCheckedChange = { onToggle() }
                     )
+                    IconButton(onClick = onApplySingle) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Apply This Patch")
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }

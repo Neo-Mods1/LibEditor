@@ -4,22 +4,26 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.neomods.libeditor.model.Architecture
 import com.neomods.libeditor.ui.components.*
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +37,8 @@ fun MainScreen(
     val successMessage by viewModel.successMessage.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    var infoSheetOffset by remember { mutableFloatStateOf(0f) }
+    var showInfoSheet by remember { mutableStateOf(false) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -49,6 +55,11 @@ fun MainScreen(
                     Text("LibEditor", fontWeight = FontWeight.Bold)
                 },
                 actions = {
+                    if (libraryInfo.isOpen) {
+                        IconButton(onClick = { showInfoSheet = !showInfoSheet }) {
+                            Icon(Icons.Default.Info, contentDescription = "Library Info")
+                        }
+                    }
                     IconButton(onClick = {
                         filePickerLauncher.launch(arrayOf("*/*"))
                     }) {
@@ -58,59 +69,127 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
         ) {
-            SnackbarHost(
-                hostState = remember { SnackbarHostState() },
-                snackbar = { data ->
-                    Snackbar(
-                        snackbarData = data,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            )
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (libraryInfo.isOpen) {
+                    TabRow(selectedTabIndex = selectedTab) {
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("Address Patching") }
+                        )
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("String Editor") }
+                        )
+                    }
 
-            LibraryInfoCard(libraryInfo)
-
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-
-            if (libraryInfo.isOpen) {
-                TabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Address Patching") }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("String Editor") }
-                    )
-                }
-
-                AnimatedContent(
-                    targetState = selectedTab,
-                    transitionSpec = {
-                        fadeIn() + slideInHorizontally { it } togetherWith
-                                fadeOut() + slideOutHorizontally { -it }
-                    },
-                    label = "tab_transition"
-                ) { tab ->
-                    when (tab) {
-                        0 -> AddressPatchingTab(viewModel)
-                        1 -> StringEditorTab(viewModel)
+                    AnimatedContent(
+                        targetState = selectedTab,
+                        transitionSpec = {
+                            fadeIn() + slideInHorizontally { it } togetherWith
+                                    fadeOut() + slideOutHorizontally { -it }
+                        },
+                        label = "tab_transition"
+                    ) { tab ->
+                        when (tab) {
+                            0 -> AddressPatchingTab(viewModel)
+                            1 -> StringEditorTab(viewModel)
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        EmptyStateCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        )
                     }
                 }
-            } else {
-                EmptyStateCard(
+            }
+
+            if (showInfoSheet && libraryInfo.isOpen) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                )
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (infoSheetOffset > 100) {
+                                        showInfoSheet = false
+                                    }
+                                    infoSheetOffset = 0f
+                                },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    infoSheetOffset += dragAmount
+                                }
+                            )
+                        }
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .offset { IntOffset(0, infoSheetOffset.roundToInt()) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Surface(
+                                    modifier = Modifier
+                                        .width(40.dp)
+                                        .height(4.dp),
+                                    shape = MaterialTheme.shapes.small,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                ) {}
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = libraryInfo.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            InfoRow("Architecture", libraryInfo.architecture.displayName)
+                            InfoRow("File Size", formatFileSize(libraryInfo.fileSize))
+                            InfoRow("Sections", libraryInfo.sectionCount.toString())
+                            InfoRow("Strings", libraryInfo.stringCount.toString())
+                            InfoRow("Entry Point", "0x${libraryInfo.entryPoint.toString(16).uppercase()}")
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Drag down to close",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -142,32 +221,6 @@ fun MainScreen(
 
     successMessage?.let { msg ->
         SuccessSnackbar(message = msg, onDismiss = { viewModel.clearSuccess() })
-    }
-}
-
-@Composable
-fun LibraryInfoCard(info: com.neomods.libeditor.model.LibraryInfo) {
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = if (info.isOpen) info.name else "No Library Loaded",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            if (info.isOpen) {
-                Spacer(modifier = Modifier.height(8.dp))
-                InfoRow("Architecture", info.architecture.displayName)
-                InfoRow("File Size", formatFileSize(info.fileSize))
-                InfoRow("Sections", info.sectionCount.toString())
-                InfoRow("Strings", info.stringCount.toString())
-                InfoRow("Entry Point", "0x${info.entryPoint.toString(16).uppercase()}")
-            }
-        }
     }
 }
 
