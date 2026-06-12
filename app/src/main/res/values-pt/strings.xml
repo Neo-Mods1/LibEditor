@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoLibEditor</string>
+    <string name="main_title">NeoLibEditor</string>
+    <string name="splash_subtitle">Editor de Bibliotecas ELF</string>
+    <string name="select_library">Selecionar Biblioteca</string>
+    <string name="select_library_desc">Escolha um arquivo .so para editar patches e strings</string>
+    <string name="pick_so_file">Escolher arquivo .so</string>
+    <string name="recent_libraries">Bibliotecas Recentes</string>
+    <string name="no_recent_libs">Nenhuma biblioteca ainda.\nEscolha um arquivo .so para começar.</string>
+    <string name="settings">Configurações</string>
+    <string name="about">Sobre</string>
+    <string name="confirm">Confirmar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="ok">OK</string>
+    <string name="save">Salvar</string>
+    <string name="back">Voltar</string>
+    <string name="tab_patches">Patches de Endereço</string>
+    <string name="tab_strings">Editor de Strings</string>
+    <string name="architecture">Arquitetura</string>
+    <string name="file_size">Tamanho</string>
+    <string name="sections">Seções</string>
+    <string name="strings">Strings</string>
+    <string name="entry_point">Ponto de Entrada</string>
+    <string name="drag_to_close">Arraste para baixo para fechar</string>
+    <string name="theme_mode">Tema</string>
+    <string name="system_theme">Sistema</string>
+    <string name="light_theme">Claro</string>
+    <string name="dark_theme">Escuro</string>
+    <string name="storage">Armazenamento</string>
+    <string name="edit_location">Local de Edição</string>
+    <string name="contact">Contato</string>
+    <string name="appearance">Aparência</string>
+    <string name="application_info">Informações do App</string>
+    <string name="technologies">Tecnologias</string>
+    <string name="language">Idioma</string>
+    <string name="name_label">Nome</string>
+    <string name="version">Versão</string>
+    <string name="package_label">Pacote</string>
+    <string name="rust_backend">Backend Rust</string>
+    <string name="telegram">Telegram</string>
+    <string name="github">GitHub</string>
+    <string name="frontend_tech">Frontend: Kotlin, Jetpack Compose, Material 3, DataStore</string>
+    <string name="backend_tech">Backend: Rust, JNI, goblin</string>
+    <string name="restart_required">Reinicie o app para aplicar as mudanças de idioma</string>
+</resources>

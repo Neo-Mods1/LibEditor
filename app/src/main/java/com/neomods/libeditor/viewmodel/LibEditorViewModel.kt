@@ -52,7 +52,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         val jniBridge = JniBridge(application)
-        repository = LibEditorRepository(jniBridge)
+        repository = LibEditorRepository(jniBridge, application)
     }
 
     fun loadLibrary(filePath: String) {

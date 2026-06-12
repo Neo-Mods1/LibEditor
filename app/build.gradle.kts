@@ -106,6 +106,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("com.airbnb.android:lottie-compose:6.6.2")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

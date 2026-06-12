@@ -1,36 +1,38 @@
-package com.neomods.libeditor.ui.screens
+package com.neomods.libeditor.ui.screens.editor
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.neomods.libeditor.model.Architecture
-import com.neomods.libeditor.ui.components.*
+import com.neomods.libeditor.R
+import com.neomods.libeditor.model.LibraryInfo
+import com.neomods.libeditor.ui.components.ErrorSnackbar
+import com.neomods.libeditor.ui.components.SuccessSnackbar
+import com.neomods.libeditor.ui.screens.AddressPatchingTab
+import com.neomods.libeditor.ui.screens.InfoRow
+import com.neomods.libeditor.ui.screens.StringEditorTab
+import com.neomods.libeditor.ui.screens.formatFileSize
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(
-    viewModel: LibEditorViewModel = viewModel()
+fun EditorScreen(
+    libPath: String,
+    onNavigateBack: () -> Unit
 ) {
-    val context = LocalContext.current
+    val viewModel: LibEditorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val libraryInfo by viewModel.libraryInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -40,30 +42,32 @@ fun MainScreen(
     var infoSheetOffset by remember { mutableFloatStateOf(0f) }
     var showInfoSheet by remember { mutableStateOf(false) }
 
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let {
-            viewModel.loadLibraryFromUri(it)
-        }
+    LaunchedEffect(libPath) {
+        viewModel.loadLibrary(libPath)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("LibEditor", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = libraryInfo.name.ifEmpty { "Editor" },
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
                 },
                 actions = {
                     if (libraryInfo.isOpen) {
                         IconButton(onClick = { showInfoSheet = !showInfoSheet }) {
                             Icon(Icons.Default.Info, contentDescription = "Library Info")
                         }
-                    }
-                    IconButton(onClick = {
-                        filePickerLauncher.launch(arrayOf("*/*"))
-                    }) {
-                        Icon(Icons.Default.FolderOpen, contentDescription = "Open .so file")
                     }
                 }
             )
@@ -74,20 +78,18 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 if (libraryInfo.isOpen) {
                     TabRow(selectedTabIndex = selectedTab) {
                         Tab(
                             selected = selectedTab == 0,
                             onClick = { selectedTab = 0 },
-                            text = { Text("Address Patching") }
+                            text = { Text(stringResource(R.string.tab_patches)) }
                         )
                         Tab(
                             selected = selectedTab == 1,
                             onClick = { selectedTab = 1 },
-                            text = { Text("String Editor") }
+                            text = { Text(stringResource(R.string.tab_strings)) }
                         )
                     }
 
@@ -105,16 +107,13 @@ fun MainScreen(
                         }
                     }
                 } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        EmptyStateCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
             }
@@ -148,41 +147,32 @@ fun MainScreen(
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Surface(
-                                    modifier = Modifier
-                                        .width(40.dp)
-                                        .height(4.dp),
+                                    modifier = Modifier.width(40.dp).height(4.dp),
                                     shape = MaterialTheme.shapes.small,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                                 ) {}
                             }
-
                             Spacer(modifier = Modifier.height(12.dp))
-
                             Text(
                                 text = libraryInfo.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-
                             Spacer(modifier = Modifier.height(8.dp))
-                            InfoRow("Architecture", libraryInfo.architecture.displayName)
-                            InfoRow("File Size", formatFileSize(libraryInfo.fileSize))
-                            InfoRow("Sections", libraryInfo.sectionCount.toString())
-                            InfoRow("Strings", libraryInfo.stringCount.toString())
-                            InfoRow("Entry Point", "0x${libraryInfo.entryPoint.toString(16).uppercase()}")
-
+                            InfoRow(stringResource(R.string.architecture), libraryInfo.architecture.displayName)
+                            InfoRow(stringResource(R.string.file_size), formatFileSize(libraryInfo.fileSize))
+                            InfoRow(stringResource(R.string.sections), libraryInfo.sectionCount.toString())
+                            InfoRow(stringResource(R.string.strings), libraryInfo.stringCount.toString())
+                            InfoRow(stringResource(R.string.entry_point), "0x${libraryInfo.entryPoint.toString(16).uppercase()}")
                             Spacer(modifier = Modifier.height(8.dp))
-
                             Text(
-                                text = "Drag down to close",
+                                text = stringResource(R.string.drag_to_close),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -191,18 +181,6 @@ fun MainScreen(
                     }
                 }
             }
-        }
-    }
-
-    LaunchedEffect(errorMessage) {
-        errorMessage?.let {
-            viewModel.clearError()
-        }
-    }
-
-    LaunchedEffect(successMessage) {
-        successMessage?.let {
-            viewModel.clearSuccess()
         }
     }
 
@@ -222,32 +200,4 @@ fun MainScreen(
     successMessage?.let { msg ->
         SuccessSnackbar(message = msg, onDismiss = { viewModel.clearSuccess() })
     }
-}
-
-@Composable
-fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-fun formatFileSize(bytes: Long): String = when {
-    bytes < 1024 -> "$bytes B"
-    bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-    bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
-    else -> "${bytes / (1024 * 1024 * 1024)} GB"
 }

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoLibEditor</string>
+    <string name="main_title">NeoLibEditor</string>
+    <string name="splash_subtitle">编辑器 ELF 库</string>
+    <string name="select_library">选择库</string>
+    <string name="select_library_desc">选择 .so 文件以编辑补丁和字符串</string>
+    <string name="pick_so_file">选择 .so 文件</string>
+    <string name="recent_libraries">最近的库</string>
+    <string name="no_recent_libs">暂无库文件。\n请选择 .so 文件开始。</string>
+    <string name="settings">设置</string>
+    <string name="about">关于</string>
+    <string name="confirm">确认</string>
+    <string name="cancel">取消</string>
+    <string name="ok">确定</string>
+    <string name="save">保存</string>
+    <string name="back">返回</string>
+    <string name="tab_patches">地址补丁</string>
+    <string name="tab_strings">字符串编辑器</string>
+    <string name="architecture">架构</string>
+    <string name="file_size">文件大小</string>
+    <string name="sections">段</string>
+    <string name="strings">字符串</string>
+    <string name="entry_point">入口点</string>
+    <string name="drag_to_close">向下拖动关闭</string>
+    <string name="theme_mode">主题</string>
+    <string name="system_theme">系统</string>
+    <string name="light_theme">浅色</string>
+    <string name="dark_theme">深色</string>
+    <string name="storage">存储</string>
+    <string name="edit_location">编辑位置</string>
+    <string name="contact">联系</string>
+    <string name="appearance">外观</string>
+    <string name="application_info">应用信息</string>
+    <string name="technologies">技术</string>
+    <string name="language">语言</string>
+    <string name="name_label">名称</string>
+    <string name="version">版本</string>
+    <string name="package_label">包名</string>
+    <string name="rust_backend">Rust 后端</string>
+    <string name="telegram">Telegram</string>
+    <string name="github">GitHub</string>
+    <string name="frontend_tech">前端: Kotlin, Jetpack Compose, Material 3, DataStore</string>
+    <string name="backend_tech">后端: Rust, JNI, goblin</string>
+    <string name="restart_required">请重启应用以应用语言更改</string>
+</resources>

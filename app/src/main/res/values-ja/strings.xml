@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoLibEditor</string>
+    <string name="main_title">NeoLibEditor</string>
+    <string name="splash_subtitle">ELF ライブラリエディタ</string>
+    <string name="select_library">ライブラリを選択</string>
+    <string name="select_library_desc">パッチと文字列を編集する.soファイルを選択</string>
+    <string name="pick_so_file">.soファイルを選択</string>
+    <string name="recent_libraries">最近のライブラリ</string>
+    <string name="no_recent_libs">ライブラリがまだありません。\n.soファイルを選択してください。</string>
+    <string name="settings">設定</string>
+    <string name="about">アプリについて</string>
+    <string name="confirm">確認</string>
+    <string name="cancel">キャンセル</string>
+    <string name="ok">OK</string>
+    <string name="save">保存</string>
+    <string name="back">戻る</string>
+    <string name="tab_patches">アドレスパッチ</string>
+    <string name="tab_strings">文字列エディタ</string>
+    <string name="architecture">アーキテクチャ</string>
+    <string name="file_size">ファイルサイズ</string>
+    <string name="sections">セクション</string>
+    <string name="strings">文字列</string>
+    <string name="entry_point">エントリポイント</string>
+    <string name="drag_to_close">下にドラッグして閉じる</string>
+    <string name="theme_mode">テーマ</string>
+    <string name="system_theme">システム</string>
+    <string name="light_theme">ライト</string>
+    <string name="dark_theme">ダーク</string>
+    <string name="storage">ストレージ</string>
+    <string name="edit_location">編集場所</string>
+    <string name="contact">連絡先</string>
+    <string name="appearance">外観</string>
+    <string name="application_info">アプリ情報</string>
+    <string name="technologies">技術</string>
+    <string name="language">言語</string>
+    <string name="name_label">名前</string>
+    <string name="version">バージョン</string>
+    <string name="package_label">パッケージ</string>
+    <string name="rust_backend">Rust バックエンド</string>
+    <string name="telegram">Telegram</string>
+    <string name="github">GitHub</string>
+    <string name="frontend_tech">フロントエンド: Kotlin, Jetpack Compose, Material 3, DataStore</string>
+    <string name="backend_tech">バックエンド: Rust, JNI, goblin</string>
+    <string name="restart_required">言語変更を適用するにはアプリを再起動してください</string>
+</resources>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoLibEditor</string>
+    <string name="main_title">NeoLibEditor</string>
+    <string name="splash_subtitle">محرر مكتبات ELF</string>
+    <string name="select_library">اختر مكتبة</string>
+    <string name="select_library_desc">اختر ملف .so لتعديل الارتباطات والنصوص</string>
+    <string name="pick_so_file">اختر ملف .so</string>
+    <string name="recent_libraries">المكتبات الأخيرة</string>
+    <string name="no_recent_libs">لا توجد مكتبات بعد.\nاختر ملف .so للبدء.</string>
+    <string name="settings">الإعدادات</string>
+    <string name="about">حول</string>
+    <string name="confirm">تأكيد</string>
+    <string name="cancel">إلغاء</string>
+    <string name="ok">حسناً</string>
+    <string name="save">حفظ</string>
+    <string name="back">رجوع</string>
+    <string name="tab_patches">ارتباطات العنوان</string>
+    <string name="tab_strings">محرر النصوص</string>
+    <string name="architecture">البنية</string>
+    <string name="file_size">الحجم</string>
+    <string name="sections">الأقسام</string>
+    <string name="strings">النصوص</string>
+    <string name="entry_point">نقطة الدخول</string>
+    <string name="drag_to_close">اسحب للأسفل للإغلاق</string>
+    <string name="theme_mode">المظهر</string>
+    <string name="system_theme">النظام</string>
+    <string name="light_theme">فاتح</string>
+    <string name="dark_theme">داكن</string>
+    <string name="storage">التخزين</string>
+    <string name="edit_location">موقع التعديل</string>
+    <string name="contact">التواصل</string>
+    <string name="appearance">المظهر</string>
+    <string name="application_info">معلومات التطبيق</string>
+    <string name="technologies">التقنيات</string>
+    <string name="language">اللغة</string>
+    <string name="name_label">الاسم</string>
+    <string name="version">الإصدار</string>
+    <string name="package_label">الحزمة</string>
+    <string name="rust_backend">Backend Rust</string>
+    <string name="telegram">Telegram</string>
+    <string name="github">GitHub</string>
+    <string name="frontend_tech">Frontend: Kotlin, Jetpack Compose, Material 3, DataStore</string>
+    <string name="backend_tech">Backend: Rust, JNI, goblin</string>
+    <string name="restart_required">أعد تشغيل التطبيق لتطبيق تغييرات اللغة</string>
+</resources>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoLibEditor</string>
+    <string name="main_title">NeoLibEditor</string>
+    <string name="splash_subtitle">Editor Pustaka ELF</string>
+    <string name="select_library">Pilih Pustaka</string>
+    <string name="select_library_desc">Pilih file .so untuk mengedit patch dan string</string>
+    <string name="pick_so_file">Pilih File .so</string>
+    <string name="recent_libraries">Pustaka Terbaru</string>
+    <string name="no_recent_libs">Belum ada pustaka.\nPilih file .so untuk memulai.</string>
+    <string name="settings">Pengaturan</string>
+    <string name="about">Tentang</string>
+    <string name="confirm">Konfirmasi</string>
+    <string name="cancel">Batal</string>
+    <string name="ok">OK</string>
+    <string name="save">Simpan</string>
+    <string name="back">Kembali</string>
+    <string name="tab_patches">Patch Alamat</string>
+    <string name="tab_strings">Editor String</string>
+    <string name="architecture">Arsitektur</string>
+    <string name="file_size">Ukuran</string>
+    <string name="sections">Bagian</string>
+    <string name="strings">String</string>
+    <string name="entry_point">Titik Masuk</string>
+    <string name="drag_to_close">Seret ke bawah untuk menutup</string>
+    <string name="theme_mode">Tema</string>
+    <string name="system_theme">Sistem</string>
+    <string name="light_theme">Terang</string>
+    <string name="dark_theme">Gelap</string>
+    <string name="storage">Penyimpanan</string>
+    <string name="edit_location">Lokasi Edit</string>
+    <string name="contact">Kontak</string>
+    <string name="appearance">Tampilan</string>
+    <string name="application_info">Info Aplikasi</string>
+    <string name="technologies">Teknologi</string>
+    <string name="language">Bahasa</string>
+    <string name="name_label">Nama</string>
+    <string name="version">Versi</string>
+    <string name="package_label">Paket</string>
+    <string name="rust_backend">Backend Rust</string>
+    <string name="telegram">Telegram</string>
+    <string name="github">GitHub</string>
+    <string name="frontend_tech">Frontend: Kotlin, Jetpack Compose, Material 3, DataStore</string>
+    <string name="backend_tech">Backend: Rust, JNI, goblin</string>
+    <string name="restart_required">Mulai ulang aplikasi untuk menerapkan perubahan bahasa</string>
+</resources>

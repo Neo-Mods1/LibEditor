@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoLibEditor</string>
+    <string name="main_title">NeoLibEditor</string>
+    <string name="splash_subtitle">Редактор ELF библиотек</string>
+    <string name="select_library">Выберите библиотеку</string>
+    <string name="select_library_desc">Выберите .so файл для редактирования патчей и строк</string>
+    <string name="pick_so_file">Выбрать .so файл</string>
+    <string name="recent_libraries">Недавние библиотеки</string>
+    <string name="no_recent_libs">Библиотек пока нет.\nВыберите .so файл для начала.</string>
+    <string name="settings">Настройки</string>
+    <string name="about">О приложении</string>
+    <string name="confirm">Подтвердить</string>
+    <string name="cancel">Отмена</string>
+    <string name="ok">OK</string>
+    <string name="save">Сохранить</string>
+    <string name="back">Назад</string>
+    <string name="tab_patches">Патчи адресов</string>
+    <string name="tab_strings">Редактор строк</string>
+    <string name="architecture">Архитектура</string>
+    <string name="file_size">Размер</string>
+    <string name="sections">Секции</string>
+    <string name="strings">Строки</string>
+    <string name="entry_point">Точка входа</string>
+    <string name="drag_to_close">Проведите вниз для закрытия</string>
+    <string name="theme_mode">Тема</string>
+    <string name="system_theme">Системная</string>
+    <string name="light_theme">Светлая</string>
+    <string name="dark_theme">Тёмная</string>
+    <string name="storage">Хранилище</string>
+    <string name="edit_location">Папка редактирования</string>
+    <string name="contact">Контакты</string>
+    <string name="appearance">Внешний вид</string>
+    <string name="application_info">Информация</string>
+    <string name="technologies">Технологии</string>
+    <string name="language">Язык</string>
+    <string name="name_label">Название</string>
+    <string name="version">Версия</string>
+    <string name="package_label">Пакет</string>
+    <string name="rust_backend">Rust бэкенд</string>
+    <string name="telegram">Telegram</string>
+    <string name="github">GitHub</string>
+    <string name="frontend_tech">Frontend: Kotlin, Jetpack Compose, Material 3, DataStore</string>
+    <string name="backend_tech">Backend: Rust, JNI, goblin</string>
+    <string name="restart_required">Перезапустите приложение для применения языка</string>
+</resources>

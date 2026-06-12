@@ -21,6 +21,17 @@
 # Keep Compose
 -keep class androidx.compose.** { *; }
 
+# Lottie / okio
+-dontwarn javax.annotation.**
+-dontwarn org.codehaus.mojo.animal_sniffer.**
+-dontwarn okio.**
+-dontwarn okhttp3.**
+-keep class com.airbnb.lottie.** { *; }
+-keep class okio.** { *; }
+
+# DataStore
+-keep class androidx.datastore.** { *; }
+
 # Optimization
 -optimizations !code/simplification/cast,!field/*,!class/merging/*
 -optimizationpasses 5
