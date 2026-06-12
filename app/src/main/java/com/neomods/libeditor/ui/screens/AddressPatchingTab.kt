@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.neomods.libeditor.model.Architecture
 import com.neomods.libeditor.model.PatchEntry
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 
@@ -22,6 +23,15 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
     val patches by viewModel.patches.collectAsState()
     val currentReadResult by viewModel.currentReadResult.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val libraryInfo by viewModel.libraryInfo.collectAsState()
+
+    val readLength = when (libraryInfo.architecture) {
+        Architecture.ARM64 -> 4
+        Architecture.ARMV7 -> 4
+        Architecture.X86 -> 4
+        Architecture.X86_64 -> 4
+        Architecture.UNKNOWN -> 4
+    }
 
     var offsetInput by remember { mutableStateOf("") }
     var patchInput by remember { mutableStateOf("") }
@@ -55,7 +65,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-            onClick = { viewModel.readOffset(offsetInput) },
+            onClick = { viewModel.readOffset(offsetInput, readLength) },
             modifier = Modifier.fillMaxWidth(),
             enabled = offsetInput.isNotBlank() && !isLoading
         ) {
