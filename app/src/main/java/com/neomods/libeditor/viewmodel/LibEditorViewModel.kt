@@ -157,12 +157,21 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
 
-        val normalizedOffset = normalizeHex(offset)
-        val normalizedReplacement = normalizeHex(replacementBytes)
-        val originalBytes = normalizeHex(current.first)
+        val normalizedOffset = normalizeHex(offset) ?: run {
+            _errorMessage.value = "Invalid hex in offset"
+            return
+        }
+        val normalizedReplacement = normalizeHex(replacementBytes) ?: run {
+            _errorMessage.value = "Invalid hex in replacement bytes"
+            return
+        }
+        val originalBytes = normalizeHex(current.first) ?: run {
+            _errorMessage.value = "Invalid hex in read result"
+            return
+        }
 
         if (normalizedReplacement.length != originalBytes.length) {
-            _errorMessage.value = "Replacement must be ${originalBytes.length / 2} bytes"
+            _errorMessage.value = "Replacement must be ${originalBytes.length / 2} bytes (got ${normalizedReplacement.length / 2})"
             return
         }
 
@@ -340,11 +349,16 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private fun normalizeHex(hex: String): String {
-        return hex.trim()
+    private fun normalizeHex(hex: String): String? {
+        val cleaned = hex.trim()
             .replace("0x", "", ignoreCase = true)
-            .replace("0X", "", ignoreCase = true)
             .replace(" ", "")
             .uppercase()
+
+        if (cleaned.isEmpty()) return null
+        if (cleaned.length % 2 != 0) return null
+        if (!cleaned.all { it in '0'..'9' || it in 'A'..'F' }) return null
+
+        return cleaned
     }
 }

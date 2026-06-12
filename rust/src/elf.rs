@@ -108,6 +108,10 @@ pub fn parse_hex_string(hex: &str) -> Result<Vec<u8>, ElfError> {
         .filter(|c| !c.is_whitespace() && *c != ' ')
         .collect();
 
+    if cleaned.is_empty() {
+        return Err(ElfError::InvalidHex("Empty hex string".to_string()));
+    }
+
     if cleaned.len() % 2 != 0 {
         return Err(ElfError::InvalidHex(
             "Hex string must have even length".to_string(),

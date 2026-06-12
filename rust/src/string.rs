@@ -1,4 +1,4 @@
-use crate::elf::{ElfData, ExtractedString};
+use crate::elf::{ElfData, ElfError, ExtractedString};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -35,6 +35,31 @@ impl StringReplacer {
         original_length: usize,
         replacement: &str,
     ) -> Result<(), String> {
+        if original_length == 0 {
+            return Err("Original length cannot be zero".to_string());
+        }
+
+        let end = offset + original_length as u64;
+        if end > self.elf.bytes.len() as u64 {
+            return Err(format!(
+                "Offset {} + length {} = {} exceeds file size {}",
+                offset,
+                original_length,
+                end,
+                self.elf.bytes.len()
+            ));
+        }
+
+        let actual_at_offset = &self.elf.bytes[offset as usize..end as usize];
+        let all_null = actual_at_offset.iter().all(|&b| b == 0);
+        if !all_null {
+            let hex_preview: Vec<String> = actual_at_offset.iter().map(|b| format!("{:02X}", b)).collect();
+            eprintln!(
+                "Warning: bytes at offset {} are not all zeros: {:?}",
+                offset, hex_preview
+            );
+        }
+
         let replacement_bytes = replacement.as_bytes();
 
         if replacement_bytes.len() > original_length {

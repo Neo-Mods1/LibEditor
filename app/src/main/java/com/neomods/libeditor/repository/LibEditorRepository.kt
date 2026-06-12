@@ -8,14 +8,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
-class LibEditorRepository(private val jniBridge: JniBridge, context: Context) {
+class LibEditorRepository(private val jniBridge: JniBridge, private val context: Context) {
 
     private var currentFilePath: String? = null
     private val settingsManager = SettingsManager(context)
 
-    fun getEditorDir(): File {
-        val location = runBlocking { settingsManager.editLocation.first() }
-        val dir = File(location)
+    private fun getEditorDir(): File {
+        val dir = File(context.filesDir, "libraries")
         dir.mkdirs()
         return dir
     }
@@ -38,21 +37,13 @@ class LibEditorRepository(private val jniBridge: JniBridge, context: Context) {
 
     fun applySinglePatch(patch: PatchEntry, outputPath: String? = null): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: run {
-            val file = File(path)
-            val editorDir = File(file.parent ?: "/storage/emulated/0/Editor")
-            File(editorDir, file.name).absolutePath
-        }
+        val out = outputPath ?: getEditorOutputPath(path)
         return jniBridge.applyPatches(path, listOf(patch), out)
     }
 
     fun applyPatches(patches: List<PatchEntry>, outputPath: String? = null): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: run {
-            val file = File(path)
-            val editorDir = File(file.parent ?: "/storage/emulated/0/Editor")
-            File(editorDir, file.name).absolutePath
-        }
+        val out = outputPath ?: getEditorOutputPath(path)
         return jniBridge.applyPatches(path, patches, out)
     }
 
@@ -68,23 +59,19 @@ class LibEditorRepository(private val jniBridge: JniBridge, context: Context) {
         outputPath: String? = null
     ): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: run {
-            val file = File(path)
-            val editorDir = File(file.parent ?: "/storage/emulated/0/Editor")
-            File(editorDir, file.name).absolutePath
-        }
+        val out = outputPath ?: getEditorOutputPath(path)
         return jniBridge.replaceString(path, offset, originalLength, replacement, out)
     }
 
     fun getEditorOutputPath(originalPath: String): String {
         val file = File(originalPath)
-        return File(file.parent ?: "/storage/emulated/0/Editor", file.name).absolutePath
+        return File(getEditorDir(), file.name).absolutePath
     }
 
     fun reloadFromEditor(): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
         val file = File(path)
-        val editorPath = File(file.parent ?: "/storage/emulated/0/Editor", file.name).absolutePath
+        val editorPath = File(getEditorDir(), file.name).absolutePath
         if (File(editorPath).exists()) {
             currentFilePath = editorPath
             return Result.success(editorPath)

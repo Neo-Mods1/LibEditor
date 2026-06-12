@@ -3,7 +3,6 @@ package com.neomods.libeditor.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -12,9 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.neomods.libeditor.model.Architecture
 import com.neomods.libeditor.model.PatchEntry
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 
@@ -23,15 +20,6 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
     val patches by viewModel.patches.collectAsState()
     val currentReadResult by viewModel.currentReadResult.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val libraryInfo by viewModel.libraryInfo.collectAsState()
-
-    val readLength = when (libraryInfo.architecture) {
-        Architecture.ARM64 -> 4
-        Architecture.ARMV7 -> 4
-        Architecture.X86 -> 4
-        Architecture.X86_64 -> 4
-        Architecture.UNKNOWN -> 4
-    }
 
     var offsetInput by remember { mutableStateOf("") }
     var patchInput by remember { mutableStateOf("") }
@@ -64,8 +52,31 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        OutlinedTextField(
+            value = patchInput,
+            onValueChange = { patchInput = it },
+            label = { Text("Replacement Bytes (e.g., 00 00 A0 E3)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val replacementLength = remember(patchInput) {
+            val cleaned = patchInput.replace(" ", "").replace("0x", "", ignoreCase = true)
+            if (cleaned.isNotEmpty() && cleaned.length % 2 == 0 && cleaned.all { it in '0'..'9' || it in 'A'..'F' || it in 'a'..'f' }) {
+                cleaned.length / 2
+            } else {
+                0
+            }
+        }
+
         Button(
-            onClick = { viewModel.readOffset(offsetInput, readLength) },
+            onClick = {
+                val len = if (replacementLength > 0) replacementLength else 4
+                viewModel.readOffset(offsetInput, len)
+            },
             modifier = Modifier.fillMaxWidth(),
             enabled = offsetInput.isNotBlank() && !isLoading
         ) {
@@ -79,7 +90,10 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
             }
             Icon(Icons.Default.Search, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Read Current Value")
+            Text(
+                if (replacementLength > 0) "Read $replacementLength bytes from offset"
+                else "Read Current Value"
+            )
         }
 
         currentReadResult?.let { (hex, bytes) ->
@@ -89,7 +103,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = "Current Value",
+                        text = "Original (${bytes.size} bytes)",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -99,26 +113,38 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "Raw: $hex",
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+
+                    if (patchInput.isNotBlank()) {
+                        val normalizedReplacement = patchInput.replace(" ", "").uppercase()
+                        val replacementBytes = normalizedReplacement.chunked(2).map { it.toInt(16) }
+                        val sizeMatch = replacementBytes.size == bytes.size
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Replacement (${replacementBytes.size} bytes)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (sizeMatch) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = formatHexDisplay(normalizedReplacement),
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (sizeMatch) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                        )
+
+                        if (!sizeMatch) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Size mismatch: original is ${bytes.size} bytes, replacement is ${replacementBytes.size} bytes",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = patchInput,
-            onValueChange = { patchInput = it },
-            label = { Text("Replacement Bytes (e.g., 00 00 A0 E3)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -139,7 +165,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
                 descriptionInput = ""
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = offsetInput.isNotBlank() && patchInput.isNotBlank()
+            enabled = offsetInput.isNotBlank() && patchInput.isNotBlank() && currentReadResult != null
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
@@ -274,7 +300,7 @@ fun PatchCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Original",
+                        text = "Original (${patch.originalBytes.replace(" ", "").length / 2} bytes)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -286,7 +312,7 @@ fun PatchCard(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Replacement",
+                        text = "Replacement (${patch.replacementBytes.replace(" ", "").length / 2} bytes)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -38,7 +38,6 @@ fun HomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager(context) }
-    val editLocation by settingsManager.editLocation.collectAsState()
 
     var recentLibs by remember { mutableStateOf<List<File>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -48,11 +47,11 @@ fun HomeScreen(
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                val path = withContext(Dispatchers.IO) {
-                    copyToEditor(context, it, editLocation)
+                val result = withContext(Dispatchers.IO) {
+                    copyToInternal(context, it)
                 }
-                if (path != null) {
-                    onLibSelected(path)
+                if (result != null) {
+                    onLibSelected(result)
                 } else {
                     errorMessage = "Failed to copy file"
                 }
@@ -60,14 +59,13 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(editLocation) {
-        val dir = File(editLocation)
-        if (dir.exists()) {
-            recentLibs = dir.listFiles()
-                ?.filter { it.isFile && it.extension == "so" }
-                ?.sortedByDescending { it.lastModified() }
-                ?: emptyList()
-        }
+    LaunchedEffect(Unit) {
+        val libDir = File(context.filesDir, "libraries")
+        libDir.mkdirs()
+        recentLibs = libDir.listFiles()
+            ?.filter { it.isFile && it.extension == "so" }
+            ?.sortedByDescending { it.lastModified() }
+            ?: emptyList()
     }
 
     Scaffold(
@@ -213,32 +211,34 @@ fun HomeScreen(
     }
 }
 
-private fun copyToEditor(context: android.content.Context, uri: Uri, editLocation: String): String? {
+private fun copyToInternal(context: android.content.Context, uri: Uri): String? {
     return try {
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-        val fileName = getFileName(context, uri) ?: "temp.so"
+        val inputStream = context.contentResolver.openInputStream(uri)
+            ?: return null.also { android.util.Log.e("HomeScreen", "openInputStream returned null") }
 
-        val internalFile = File(context.filesDir, "temp_$fileName")
+        val fileName = getFileName(context, uri) ?: "unknown.so"
+        android.util.Log.d("HomeScreen", "Copying file: $fileName from URI: $uri")
+
+        val libDir = File(context.filesDir, "libraries")
+        libDir.mkdirs()
+        val outputFile = File(libDir, fileName)
+
         inputStream.use { input ->
-            FileOutputStream(internalFile).use { output ->
+            FileOutputStream(outputFile).use { output ->
                 input.copyTo(output)
             }
         }
 
-        if (internalFile.length() == 0L) {
-            internalFile.delete()
+        if (outputFile.length() == 0L) {
+            android.util.Log.e("HomeScreen", "Copied file is empty")
+            outputFile.delete()
             return null
         }
 
-        val dir = File(editLocation)
-        dir.mkdirs()
-        val outputFile = File(dir, fileName)
-        internalFile.copyTo(outputFile, overwrite = true)
-        internalFile.delete()
-
+        android.util.Log.d("HomeScreen", "File copied: ${outputFile.absolutePath} (${outputFile.length()} bytes)")
         outputFile.absolutePath
     } catch (e: Exception) {
-        e.printStackTrace()
+        android.util.Log.e("HomeScreen", "Copy failed: ${e.message}", e)
         null
     }
 }
