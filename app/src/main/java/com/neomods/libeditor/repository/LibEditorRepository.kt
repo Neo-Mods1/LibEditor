@@ -5,6 +5,7 @@ import com.neomods.libeditor.model.*
 import com.neomods.libeditor.service.JniBridge
 import com.neomods.libeditor.storage.SettingsManager
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 class LibEditorRepository(private val jniBridge: JniBridge, context: Context) {
@@ -12,8 +13,8 @@ class LibEditorRepository(private val jniBridge: JniBridge, context: Context) {
     private var currentFilePath: String? = null
     private val settingsManager = SettingsManager(context)
 
-    suspend fun getEditorDir(): File {
-        val location = settingsManager.editLocation.first()
+    fun getEditorDir(): File {
+        val location = runBlocking { settingsManager.editLocation.first() }
         val dir = File(location)
         dir.mkdirs()
         return dir
