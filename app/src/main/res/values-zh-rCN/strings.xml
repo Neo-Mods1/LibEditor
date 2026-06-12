@@ -43,4 +43,18 @@
     <string name="frontend_tech">前端: Kotlin, Jetpack Compose, Material 3, DataStore</string>
     <string name="backend_tech">后端: Rust, JNI, goblin</string>
     <string name="restart_required">请重启应用以应用语言更改</string>
+    <string name="dynamic_colors">动态颜色</string>
+    <string name="dynamic_colors_desc">从壁纸自适应颜色</string>
+    <string name="output_directory">输出目录</string>
+    <string name="output_directory_desc">补丁后库的保存位置</string>
+    <string name="remember_paths">记住路径</string>
+    <string name="remember_paths_desc">重启应用时保存路径</string>
+    <string name="developer">开发者</string>
+    <string name="community">社区</string>
+    <string name="telegram_channel">Telegram 频道</string>
+    <string name="telegram_channel_desc">更新和发布</string>
+    <string name="report_bugs">报告问题</string>
+    <string name="report_bugs_contact">@neomods</string>
+    <string name="made_with">Neo Mods 用 Rust 制作</string>
+    <string name="app_description">Android ELF 共享库编辑器 — 补丁地址和替换字符串</string>
 </resources>

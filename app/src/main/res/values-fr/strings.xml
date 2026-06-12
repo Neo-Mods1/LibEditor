@@ -43,4 +43,18 @@
     <string name="frontend_tech">Frontend: Kotlin, Jetpack Compose, Material 3, DataStore</string>
     <string name="backend_tech">Backend: Rust, JNI, goblin</string>
     <string name="restart_required">Redémarrez l\'appli pour appliquer les changements de langue</string>
+    <string name="dynamic_colors">Couleurs dynamiques</string>
+    <string name="dynamic_colors_desc">Adapter les couleurs de votre fond d\'écran</string>
+    <string name="output_directory">Répertoire de sortie</string>
+    <string name="output_directory_desc">Où enregistrer les bibliothèques modifiées</string>
+    <string name="remember_paths">Mémoriser les chemins</string>
+    <string name="remember_paths_desc">Sauvegarder les chemins entre les sessions</string>
+    <string name="developer">Développeur</string>
+    <string name="community">Communauté</string>
+    <string name="telegram_channel">Canal Telegram</string>
+    <string name="telegram_channel_desc">Mises à jour et sorties</string>
+    <string name="report_bugs">Signaler des bugs</string>
+    <string name="report_bugs_contact">@neomods</string>
+    <string name="made_with">Fait avec Rust par Neo Mods</string>
+    <string name="app_description">Éditeur de bibliothèques ELF pour Android — modifiez les adresses et les chaînes</string>
 </resources>

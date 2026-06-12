@@ -43,4 +43,18 @@
     <string name="frontend_tech">Frontend: Kotlin, Jetpack Compose, Material 3, DataStore</string>
     <string name="backend_tech">Backend: Rust, JNI, goblin</string>
     <string name="restart_required">أعد تشغيل التطبيق لتطبيق تغييرات اللغة</string>
+    <string name="dynamic_colors">ألوان ديناميكية</string>
+    <string name="dynamic_colors_desc">تكييف الألوان من خلفيتك</string>
+    <string name="output_directory">مجلد الإخراج</string>
+    <string name="output_directory_desc">أين يتم حفظ المكتبات المعدلة</string>
+    <string name="remember_paths">تذكّر المسارات</string>
+    <string name="remember_paths_desc">حفظ المسارات بين عمليات إعادة التشغيل</string>
+    <string name="developer">المطور</string>
+    <string name="community">المجتمع</string>
+    <string name="telegram_channel">قناة تيليجرام</string>
+    <string name="telegram_channel_desc">التحديثات والإصدارات</string>
+    <string name="report_bugs">الإبلاغ عن أخطاء</string>
+    <string name="report_bugs_contact">@neomods</string>
+    <string name="made_with">صُنع بـ Rust بواسطة Neo Mods</string>
+    <string name="app_description">محرر مكتبات ELF مشتركة للأندرويد — تعديل العناوين واستبدال النصوص</string>
 </resources>

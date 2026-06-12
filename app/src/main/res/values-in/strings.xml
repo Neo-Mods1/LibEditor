@@ -43,4 +43,18 @@
     <string name="frontend_tech">Frontend: Kotlin, Jetpack Compose, Material 3, DataStore</string>
     <string name="backend_tech">Backend: Rust, JNI, goblin</string>
     <string name="restart_required">Mulai ulang aplikasi untuk menerapkan perubahan bahasa</string>
+    <string name="dynamic_colors">Warna Dinamis</string>
+    <string name="dynamic_colors_desc">Sesuaikan warna dari wallpaper</string>
+    <string name="output_directory">Direktori Output</string>
+    <string name="output_directory_desc">Tempat menyimpan pustaka yang sudah di-patch</string>
+    <string name="remember_paths">Ingat Jalur</string>
+    <string name="remember_paths_desc">Simpan jalur saat aplikasi dimulai ulang</string>
+    <string name="developer">Pengembang</string>
+    <string name="community">Komunitas</string>
+    <string name="telegram_channel">Kanal Telegram</string>
+    <string name="telegram_channel_desc">Pembaruan &amp; rilis</string>
+    <string name="report_bugs">Laporkan Bug</string>
+    <string name="report_bugs_contact">@neomods</string>
+    <string name="made_with">Dibuat dengan Rust oleh Neo Mods</string>
+    <string name="app_description">Editor pustaka ELF bersama untuk Android — patch alamat dan ganti string</string>
 </resources>

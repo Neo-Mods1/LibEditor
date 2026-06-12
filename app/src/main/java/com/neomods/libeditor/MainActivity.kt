@@ -10,8 +10,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.neomods.libeditor.domain.ThemeMode
-import com.neomods.libeditor.ui.navigation.LibEditorNavGraph
 import com.neomods.libeditor.storage.SettingsManager
+import com.neomods.libeditor.ui.navigation.LibEditorNavGraph
 import com.neomods.libeditor.ui.theme.LibEditorTheme
 import java.util.Locale
 
@@ -38,8 +38,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val themeMode by settingsManager.themeMode.collectAsState()
+            val dynamicColors by settingsManager.dynamicColors.collectAsState()
 
-            LibEditorTheme(themeMode = themeMode) {
+            LibEditorTheme(themeMode = themeMode, dynamicColor = dynamicColors) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     LibEditorNavGraph()
                 }

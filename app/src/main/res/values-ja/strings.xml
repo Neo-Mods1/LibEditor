@@ -43,4 +43,18 @@
     <string name="frontend_tech">フロントエンド: Kotlin, Jetpack Compose, Material 3, DataStore</string>
     <string name="backend_tech">バックエンド: Rust, JNI, goblin</string>
     <string name="restart_required">言語変更を適用するにはアプリを再起動してください</string>
+    <string name="dynamic_colors">ダイナミックカラー</string>
+    <string name="dynamic_colors_desc">壁紙から色を適応</string>
+    <string name="output_directory">出力ディレクトリ</string>
+    <string name="output_directory_desc">パッチ適用済みライブラリの保存先</string>
+    <string name="remember_paths">パスを記憶する</string>
+    <string name="remember_paths_desc">アプリ再起動時にパスを保存</string>
+    <string name="developer">開発者</string>
+    <string name="community">コミュニティ</string>
+    <string name="telegram_channel">Telegram チャンネル</string>
+    <string name="telegram_channel_desc">アップデートとリリース</string>
+    <string name="report_bugs">バグ報告</string>
+    <string name="report_bugs_contact">@neomods</string>
+    <string name="made_with">Neo Mods が Rust で作成</string>
+    <string name="app_description">Android用ELF共有ライブラリエディタ — アドレスパッチと文字列置換</string>
 </resources>

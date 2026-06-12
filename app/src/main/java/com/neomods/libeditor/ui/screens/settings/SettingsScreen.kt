@@ -2,18 +2,19 @@ package com.neomods.libeditor.ui.screens.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -41,7 +42,8 @@ val supportedLanguages = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToAbout: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -49,10 +51,9 @@ fun SettingsScreen(
     val currentTheme by settingsManager.themeMode.collectAsState()
     val currentLang by settingsManager.language.collectAsState()
     val currentEditLocation by settingsManager.editLocation.collectAsState()
+    val dynamicColors by settingsManager.dynamicColors.collectAsState()
 
-    var showThemeDialog by remember { mutableStateOf(false) }
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    var showEditLocationDialog by remember { mutableStateOf(false) }
+    var showLanguageDropdown by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -85,6 +86,7 @@ fun SettingsScreen(
         ) {
             item { Spacer(modifier = Modifier.height(4.dp)) }
 
+            // Appearance Section
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -95,28 +97,167 @@ fun SettingsScreen(
                         Text(
                             text = stringResource(R.string.appearance),
                             style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        SettingsRow(
-                            title = stringResource(R.string.theme_mode),
-                            value = when (currentTheme) {
-                                ThemeMode.SYSTEM -> stringResource(R.string.system_theme)
-                                ThemeMode.LIGHT -> stringResource(R.string.light_theme)
-                                ThemeMode.DARK -> stringResource(R.string.dark_theme)
-                            },
-                            onClick = { showThemeDialog = true }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.theme_mode),
+                            style = MaterialTheme.typography.bodyLarge
                         )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-                        SettingsRow(
-                            title = stringResource(R.string.language),
-                            value = supportedLanguages.find { it.code == currentLang }?.displayName ?: "English",
-                            onClick = { showLanguageDialog = true }
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            SegmentedButton(
+                                selected = currentTheme == ThemeMode.SYSTEM,
+                                onClick = { scope.launch { settingsManager.setThemeMode(ThemeMode.SYSTEM) } },
+                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                                icon = {
+                                    if (currentTheme == ThemeMode.SYSTEM) {
+                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.system_theme))
+                            }
+                            SegmentedButton(
+                                selected = currentTheme == ThemeMode.LIGHT,
+                                onClick = { scope.launch { settingsManager.setThemeMode(ThemeMode.LIGHT) } },
+                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                                icon = {
+                                    if (currentTheme == ThemeMode.LIGHT) {
+                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.LightMode, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.light_theme))
+                            }
+                            SegmentedButton(
+                                selected = currentTheme == ThemeMode.DARK,
+                                onClick = { scope.launch { settingsManager.setThemeMode(ThemeMode.DARK) } },
+                                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                                icon = {
+                                    if (currentTheme == ThemeMode.DARK) {
+                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.dark_theme))
+                            }
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Palette,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = stringResource(R.string.dynamic_colors),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                                Text(
+                                    text = stringResource(R.string.dynamic_colors_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 28.dp)
+                                )
+                            }
+                            Switch(
+                                checked = dynamicColors,
+                                onCheckedChange = { scope.launch { settingsManager.setDynamicColors(it) } }
+                            )
+                        }
                     }
                 }
             }
 
+            // Language Section
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showLanguageDropdown = !showLanguageDropdown }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Language,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = stringResource(R.string.language),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = supportedLanguages.find { it.code == currentLang }?.displayName ?: "English",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                            }
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showLanguageDropdown,
+                            onDismissRequest = { showLanguageDropdown = false }
+                        ) {
+                            supportedLanguages.forEach { lang ->
+                                DropdownMenuItem(
+                                    text = { Text(lang.displayName) },
+                                    onClick = {
+                                        scope.launch { settingsManager.setLanguage(lang.code) }
+                                        showLanguageDropdown = false
+                                    },
+                                    leadingIcon = {
+                                        if (currentLang == lang.code) {
+                                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Storage Section
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -124,41 +265,84 @@ fun SettingsScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.storage),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        SettingsRow(
-                            title = stringResource(R.string.edit_location),
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.output_directory),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = stringResource(R.string.output_directory_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
                             value = currentEditLocation,
-                            onClick = { showEditLocationDialog = true }
+                            onValueChange = { scope.launch { settingsManager.setEditLocation(it) } },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    context.startActivity(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE))
+                                }) {
+                                    Icon(
+                                        Icons.Default.FolderOpen,
+                                        contentDescription = "Browse",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                         )
                     }
                 }
             }
 
+            // About Button
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToAbout() },
                     shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.contact),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        ContactRow(title = stringResource(R.string.telegram)) {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/NeoModsChannel")))
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-                        ContactRow(title = stringResource(R.string.github)) {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Neo-Mods1/LibEditor")))
-                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.about),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
             }
@@ -166,199 +350,4 @@ fun SettingsScreen(
             item { Spacer(modifier = Modifier.height(12.dp)) }
         }
     }
-
-    if (showThemeDialog) {
-        ThemeDialog(
-            currentTheme = currentTheme,
-            onThemeSelected = { theme ->
-                scope.launch { settingsManager.setThemeMode(theme) }
-                showThemeDialog = false
-            },
-            onDismiss = { showThemeDialog = false }
-        )
-    }
-
-    if (showLanguageDialog) {
-        LanguageDialog(
-            currentLang = currentLang,
-            onLanguageSelected = { lang ->
-                scope.launch { settingsManager.setLanguage(lang) }
-                showLanguageDialog = false
-            },
-            onDismiss = { showLanguageDialog = false }
-        )
-    }
-
-    if (showEditLocationDialog) {
-        EditLocationDialog(
-            currentLocation = currentEditLocation,
-            onLocationSelected = { location ->
-                scope.launch { settingsManager.setEditLocation(location) }
-                showEditLocationDialog = false
-            },
-            onDismiss = { showEditLocationDialog = false }
-        )
-    }
-}
-
-@Composable
-fun SettingsRow(title: String, value: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = title, style = MaterialTheme.typography.bodyLarge)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun ContactRow(title: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = title, style = MaterialTheme.typography.bodyLarge)
-        Icon(
-            imageVector = Icons.Default.OpenInNew,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp)
-        )
-    }
-}
-
-@Composable
-fun LanguageDialog(
-    currentLang: String,
-    onLanguageSelected: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val chunks = supportedLanguages.chunked(2)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        title = { Text(text = stringResource(R.string.language)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                chunks.forEach { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        row.forEach { lang ->
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { onLanguageSelected(lang.code) }
-                                    .padding(vertical = 8.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = currentLang == lang.code,
-                                    onClick = { onLanguageSelected(lang.code) },
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = lang.displayName, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                            }
-                        }
-                        if (row.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        }
-    )
-}
-
-@Composable
-fun ThemeDialog(
-    currentTheme: ThemeMode,
-    onThemeSelected: (ThemeMode) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        title = { Text(text = stringResource(R.string.theme_mode)) },
-        text = {
-            Column {
-                ThemeOption(text = stringResource(R.string.system_theme), selected = currentTheme == ThemeMode.SYSTEM) { onThemeSelected(ThemeMode.SYSTEM) }
-                ThemeOption(text = stringResource(R.string.light_theme), selected = currentTheme == ThemeMode.LIGHT) { onThemeSelected(ThemeMode.LIGHT) }
-                ThemeOption(text = stringResource(R.string.dark_theme), selected = currentTheme == ThemeMode.DARK) { onThemeSelected(ThemeMode.DARK) }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        }
-    )
-}
-
-@Composable
-fun ThemeOption(text: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(text = text, style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-fun EditLocationDialog(
-    currentLocation: String,
-    onLocationSelected: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var location by remember { mutableStateOf(currentLocation) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        title = { Text(text = stringResource(R.string.edit_location)) },
-        text = {
-            OutlinedTextField(
-                value = location,
-                onValueChange = { location = it },
-                label = { Text(stringResource(R.string.edit_location)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onLocationSelected(location) }) { Text(stringResource(R.string.save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        }
-    )
 }
