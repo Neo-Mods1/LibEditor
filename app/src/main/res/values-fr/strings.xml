@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NeoLibEditor</string>
-    <string name="main_title">NeoLibEditor</string>
+    <string name="app_name">Lib Editor</string>
+    <string name="main_title">Lib Editor</string>
     <string name="splash_subtitle">Éditeur de bibliothèques ELF</string>
     <string name="select_library">Sélectionner une bibliothèque</string>
     <string name="select_library_desc">Choisissez un fichier .so pour modifier les patches et les chaînes</string>

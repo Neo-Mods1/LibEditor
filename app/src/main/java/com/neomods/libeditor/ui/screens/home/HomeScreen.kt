@@ -105,7 +105,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = {
-                            filePickerLauncher.launch(arrayOf("*/*"))
+                            filePickerLauncher.launch(arrayOf("application/octet-stream", "*/*"))
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
