@@ -1,5 +1,6 @@
 package com.neomods.libeditor.ui.screens.home
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,8 +22,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.neomods.libeditor.R
 import com.neomods.libeditor.storage.SettingsManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,14 +41,21 @@ fun HomeScreen(
     val editLocation by settingsManager.editLocation.collectAsState()
 
     var recentLibs by remember { mutableStateOf<List<File>>(emptyList()) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
-            val path = copyToEditor(context, it, editLocation)
-            if (path != null) {
-                onLibSelected(path)
+            scope.launch {
+                val path = withContext(Dispatchers.IO) {
+                    copyToEditor(context, it, editLocation)
+                }
+                if (path != null) {
+                    onLibSelected(path)
+                } else {
+                    errorMessage = "Failed to copy file"
+                }
             }
         }
     }
@@ -188,20 +199,43 @@ fun HomeScreen(
             }
         }
     }
+
+    errorMessage?.let { msg ->
+        Snackbar(
+            action = {
+                TextButton(onClick = { errorMessage = null }) {
+                    Text("OK")
+                }
+            }
+        ) {
+            Text(msg)
+        }
+    }
 }
 
 private fun copyToEditor(context: android.content.Context, uri: Uri, editLocation: String): String? {
     return try {
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
         val fileName = getFileName(context, uri) ?: "temp.so"
-        val dir = File(editLocation)
-        dir.mkdirs()
-        val outputFile = File(dir, fileName)
+
+        val internalFile = File(context.filesDir, "temp_$fileName")
         inputStream.use { input ->
-            outputFile.outputStream().use { output ->
+            FileOutputStream(internalFile).use { output ->
                 input.copyTo(output)
             }
         }
+
+        if (internalFile.length() == 0L) {
+            internalFile.delete()
+            return null
+        }
+
+        val dir = File(editLocation)
+        dir.mkdirs()
+        val outputFile = File(dir, fileName)
+        internalFile.copyTo(outputFile, overwrite = true)
+        internalFile.delete()
+
         outputFile.absolutePath
     } catch (e: Exception) {
         e.printStackTrace()
