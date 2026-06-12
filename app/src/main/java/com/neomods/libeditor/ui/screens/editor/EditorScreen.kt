@@ -112,12 +112,15 @@ fun EditorScreen(
                             selected = selectedTab == 2,
                             onClick = { selectedTab = 2 },
                             text = {
-                                if (totalModifications > 0) {
-                                    Badge(modifier = Modifier.padding(start = 4.dp)) {
-                                        Text("$totalModifications")
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Mods")
+                                    if (totalModifications > 0) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Badge {
+                                            Text("$totalModifications")
+                                        }
                                     }
                                 }
-                                Text("Mods")
                             }
                         )
                     }
