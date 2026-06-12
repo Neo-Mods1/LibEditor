@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.neomods.libeditor.R
 import com.neomods.libeditor.ui.components.ErrorSnackbar
-import com.neomods.libeditor.ui.components.SuccessSnackbar
 import com.neomods.libeditor.ui.screens.*
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 import kotlin.math.roundToInt
@@ -231,6 +230,15 @@ fun EditorScreen(
     }
 
     successMessage?.let { msg ->
-        SuccessSnackbar(message = msg, onDismiss = { viewModel.clearSuccess() })
+        AlertDialog(
+            onDismissRequest = { viewModel.clearSuccess() },
+            title = { Text("Saved") },
+            text = { Text(msg) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearSuccess() }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }

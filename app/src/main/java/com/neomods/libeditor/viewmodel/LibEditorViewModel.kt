@@ -328,8 +328,14 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                     _libraryInfo.value = info
                     _patches.value = emptyList()
                     _stringEdits.value = emptyList()
-                    _extractedStrings.value = emptyList()
-                    _filteredStrings.value = emptyList()
+                }
+
+                val stringsResult = withContext(Dispatchers.IO) {
+                    repository.extractStrings()
+                }
+                stringsResult.onSuccess { strings ->
+                    _extractedStrings.value = strings
+                    _filteredStrings.value = strings
                 }
             }
         }
