@@ -53,6 +53,10 @@
     <string name="community">社区</string>
     <string name="telegram_channel">Telegram 频道</string>
     <string name="telegram_channel_desc">更新和发布</string>
+    <string name="telegram_group">Telegram 群组</string>
+    <string name="telegram_group_desc">社区聊天和支持</string>
+    <string name="github_desc">开发者主页</string>
+    <string name="youtube_desc">教程和内容</string>
     <string name="report_bugs">报告问题</string>
     <string name="report_bugs_contact">@neomods</string>
     <string name="made_with">Neo Mods 用 Rust 制作</string>

@@ -53,6 +53,10 @@
     <string name="community">Сообщество</string>
     <string name="telegram_channel">Канал Telegram</string>
     <string name="telegram_channel_desc">Обновления и релизы</string>
+    <string name="telegram_group">Группа Telegram</string>
+    <string name="telegram_group_desc">Чат сообщества и поддержка</string>
+    <string name="github_desc">Профиль разработчика</string>
+    <string name="youtube_desc">Туториалы и контент</string>
     <string name="report_bugs">Сообщить об ошибках</string>
     <string name="report_bugs_contact">@neomods</string>
     <string name="made_with">Сделано на Rust by Neo Mods</string>

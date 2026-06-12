@@ -303,6 +303,44 @@ fun SettingsScreen(
                 }
             }
 
+            // Contact Section
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.contact),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        ContactRow(title = stringResource(R.string.telegram_channel)) {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/NeoModsChannel")))
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                        ContactRow(title = stringResource(R.string.telegram_group)) {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/+RYSsITD6K-U4NzI0")))
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                        ContactRow(title = "GitHub") {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Neo-Mods1/Neo-Mods1")))
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                        ContactRow(title = "YouTube") {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://youtube.com/@neo-modsyt?si=aHEpvVllsHPxnGck")))
+                        }
+                    }
+                }
+            }
+
             // About Button
             item {
                 Card(
@@ -340,5 +378,25 @@ fun SettingsScreen(
 
             item { Spacer(modifier = Modifier.height(12.dp)) }
         }
+    }
+}
+
+@Composable
+fun ContactRow(title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = title, style = MaterialTheme.typography.bodyLarge)
+        Icon(
+            imageVector = Icons.Default.OpenInNew,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }

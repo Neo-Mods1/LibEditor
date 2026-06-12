@@ -53,6 +53,10 @@
     <string name="community">المجتمع</string>
     <string name="telegram_channel">قناة تيليجرام</string>
     <string name="telegram_channel_desc">التحديثات والإصدارات</string>
+    <string name="telegram_group">مجموعة تيليجرام</string>
+    <string name="telegram_group_desc">دردشة المجتمع والدعم</string>
+    <string name="github_desc">ملف المطور</string>
+    <string name="youtube_desc">دروس ومحتوى</string>
     <string name="report_bugs">الإبلاغ عن أخطاء</string>
     <string name="report_bugs_contact">@neomods</string>
     <string name="made_with">صُنع بـ Rust بواسطة Neo Mods</string>

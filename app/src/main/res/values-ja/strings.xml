@@ -53,6 +53,10 @@
     <string name="community">コミュニティ</string>
     <string name="telegram_channel">Telegram チャンネル</string>
     <string name="telegram_channel_desc">アップデートとリリース</string>
+    <string name="telegram_group">Telegram グループ</string>
+    <string name="telegram_group_desc">コミュニティチャットとサポート</string>
+    <string name="github_desc">開発者プロフィール</string>
+    <string name="youtube_desc">チュートリアルとコンテンツ</string>
     <string name="report_bugs">バグ報告</string>
     <string name="report_bugs_contact">@neomods</string>
     <string name="made_with">Neo Mods が Rust で作成</string>
