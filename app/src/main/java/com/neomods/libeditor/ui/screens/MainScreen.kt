@@ -131,7 +131,7 @@ fun MainScreen(
                                     }
                                     infoSheetOffset = 0f
                                 },
-                                onDrag = { change, dragAmount ->
+                                onVerticalDrag = { change, dragAmount ->
                                     change.consume()
                                     infoSheetOffset += dragAmount
                                 }

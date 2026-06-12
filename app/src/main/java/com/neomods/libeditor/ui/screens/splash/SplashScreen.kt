@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.airbnb.lottie.compose.LottieAnimationSpec
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
@@ -46,8 +45,7 @@ fun SplashScreen(
     )
     val progress by animateLottieCompositionAsState(
         composition,
-        iterations = 1,
-        speed = 1.0f
+        iterations = LottieConstants.IterateForever
     )
 
     LaunchedEffect(Unit) {
@@ -67,9 +65,9 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.alpha(alpha)
         ) {
-            LottieAnimation(
+            com.airbnb.lottie.compose.LottieAnimation(
                 composition = composition,
-                progress = progress,
+                progress = { progress },
                 modifier = Modifier.size(200.dp)
             )
 
