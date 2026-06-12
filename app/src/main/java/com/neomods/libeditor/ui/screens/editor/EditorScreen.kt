@@ -16,13 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.neomods.libeditor.R
-import com.neomods.libeditor.model.LibraryInfo
 import com.neomods.libeditor.ui.components.ErrorSnackbar
 import com.neomods.libeditor.ui.components.SuccessSnackbar
-import com.neomods.libeditor.ui.screens.AddressPatchingTab
-import com.neomods.libeditor.ui.screens.InfoRow
-import com.neomods.libeditor.ui.screens.StringEditorTab
-import com.neomods.libeditor.ui.screens.formatFileSize
+import com.neomods.libeditor.ui.screens.*
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 import kotlin.math.roundToInt
 
@@ -37,10 +33,14 @@ fun EditorScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
+    val patches by viewModel.patches.collectAsState()
+    val stringEdits by viewModel.stringEdits.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var infoSheetOffset by remember { mutableFloatStateOf(0f) }
     var showInfoSheet by remember { mutableStateOf(false) }
+
+    val totalModifications = patches.size + stringEdits.size
 
     LaunchedEffect(libPath) {
         viewModel.loadLibrary(libPath)
@@ -65,6 +65,23 @@ fun EditorScreen(
                 },
                 actions = {
                     if (libraryInfo.isOpen) {
+                        if (totalModifications > 0) {
+                            BadgedBox(
+                                badge = {
+                                    Badge {
+                                        Text("$totalModifications")
+                                    }
+                                }
+                            ) {
+                                IconButton(onClick = { viewModel.saveAllModifications() }) {
+                                    Icon(Icons.Default.Save, contentDescription = "Save All")
+                                }
+                            }
+                        } else {
+                            IconButton(onClick = { viewModel.saveAllModifications() }) {
+                                Icon(Icons.Default.Save, contentDescription = "Save All")
+                            }
+                        }
                         IconButton(onClick = { showInfoSheet = !showInfoSheet }) {
                             Icon(Icons.Default.Info, contentDescription = "Library Info")
                         }
@@ -91,6 +108,18 @@ fun EditorScreen(
                             onClick = { selectedTab = 1 },
                             text = { Text(stringResource(R.string.tab_strings)) }
                         )
+                        Tab(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            text = {
+                                if (totalModifications > 0) {
+                                    Badge(modifier = Modifier.padding(start = 4.dp)) {
+                                        Text("$totalModifications")
+                                    }
+                                }
+                                Text("Mods")
+                            }
+                        )
                     }
 
                     AnimatedContent(
@@ -104,6 +133,7 @@ fun EditorScreen(
                         when (tab) {
                             0 -> AddressPatchingTab(viewModel)
                             1 -> StringEditorTab(viewModel)
+                            2 -> ModificationsTab(viewModel)
                         }
                     }
                 } else {

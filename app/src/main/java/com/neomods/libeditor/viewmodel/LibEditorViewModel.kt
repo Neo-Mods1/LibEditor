@@ -15,6 +15,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+data class StringEditEntry(
+    val id: String = System.currentTimeMillis().toString(),
+    val offset: Long,
+    val originalLength: Int,
+    val replacement: String,
+    val originalValue: String,
+    val enabled: Boolean = true
+)
+
 class LibEditorViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: LibEditorRepository
@@ -25,6 +34,9 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _patches = MutableStateFlow<List<PatchEntry>>(emptyList())
     val patches: StateFlow<List<PatchEntry>> = _patches.asStateFlow()
+
+    private val _stringEdits = MutableStateFlow<List<StringEditEntry>>(emptyList())
+    val stringEdits: StateFlow<List<StringEditEntry>> = _stringEdits.asStateFlow()
 
     private val _extractedStrings = MutableStateFlow<List<ExtractedString>>(emptyList())
     val extractedStrings: StateFlow<List<ExtractedString>> = _extractedStrings.asStateFlow()
@@ -65,6 +77,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             result.onSuccess { info ->
                 _libraryInfo.value = info
                 _patches.value = emptyList()
+                _stringEdits.value = emptyList()
                 _extractedStrings.value = emptyList()
                 _filteredStrings.value = emptyList()
             }.onFailure { e ->
@@ -194,7 +207,6 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         )
 
         _patches.value = _patches.value + patch
-        _successMessage.value = "Patch added"
         _currentReadResult.value = null
     }
 
@@ -216,46 +228,88 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         _patches.value = emptyList()
     }
 
-    fun applySinglePatch(patchId: String) {
-        val patch = _patches.value.find { it.id == patchId } ?: run {
-            _errorMessage.value = "Patch not found"
+    fun addStringEdit(replacement: String) {
+        val selected = _selectedString.value ?: run {
+            _errorMessage.value = "No string selected"
             return
         }
 
-        viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
-            val result = withContext(Dispatchers.IO) {
-                repository.applySinglePatch(patch)
-            }
-            result.onSuccess { outputPath ->
-                _successMessage.value = "Patch saved to: $outputPath"
-                reloadAfterPatch()
-            }.onFailure { e ->
-                _errorMessage.value = e.message ?: "Failed to apply patch"
-            }
-            _isLoading.value = false
+        if (replacement.toByteArray().size > selected.length) {
+            _errorMessage.value = "Replacement exceeds original size (${selected.length} bytes)"
+            return
+        }
+
+        val entry = StringEditEntry(
+            offset = selected.offset,
+            originalLength = selected.length,
+            replacement = replacement,
+            originalValue = selected.value
+        )
+
+        _stringEdits.value = _stringEdits.value + entry
+        _selectedString.value = null
+    }
+
+    fun toggleStringEdit(id: String) {
+        _stringEdits.value = _stringEdits.value.map {
+            if (it.id == id) it.copy(enabled = !it.enabled) else it
         }
     }
 
-    fun applyAllPatches() {
+    fun deleteStringEdit(id: String) {
+        _stringEdits.value = _stringEdits.value.filter { it.id != id }
+    }
+
+    fun clearStringEdits() {
+        _stringEdits.value = emptyList()
+    }
+
+    fun saveAllModifications() {
         val enabledPatches = _patches.value.filter { it.enabled }
-        if (enabledPatches.isEmpty()) {
-            _errorMessage.value = "No enabled patches"
+        val enabledEdits = _stringEdits.value.filter { it.enabled }
+
+        if (enabledPatches.isEmpty() && enabledEdits.isEmpty()) {
+            _errorMessage.value = "No modifications to save"
             return
         }
 
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            val result = withContext(Dispatchers.IO) {
-                repository.applyPatches(enabledPatches)
+
+            var patchPath: String? = null
+            var editPath: String? = null
+
+            if (enabledPatches.isNotEmpty()) {
+                val patchResult = withContext(Dispatchers.IO) {
+                    repository.applyPatches(enabledPatches)
+                }
+                patchResult.onSuccess { path -> patchPath = path }
+                patchResult.onFailure { e ->
+                    _errorMessage.value = "Patch error: ${e.message}"
+                    _isLoading.value = false
+                    return@launch
+                }
             }
-            result.onSuccess { outputPath ->
-                _successMessage.value = "Patches saved to: $outputPath"
+
+            for (edit in enabledEdits) {
+                val editResult = withContext(Dispatchers.IO) {
+                    repository.replaceString(edit.offset, edit.originalLength, edit.replacement)
+                }
+                editResult.onSuccess { path -> editPath = path }
+                editResult.onFailure { e ->
+                    _errorMessage.value = "String edit error: ${e.message}"
+                    _isLoading.value = false
+                    return@launch
+                }
+            }
+
+            val savedPath = patchPath ?: editPath
+            if (savedPath != null) {
+                _successMessage.value = "Saved to: $savedPath"
                 reloadAfterPatch()
-            }.onFailure { e ->
-                _errorMessage.value = e.message ?: "Failed to apply patches"
+            } else {
+                _errorMessage.value = "Failed to save modifications"
             }
             _isLoading.value = false
         }
@@ -273,6 +327,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                 infoResult.onSuccess { info ->
                     _libraryInfo.value = info
                     _patches.value = emptyList()
+                    _stringEdits.value = emptyList()
                     _extractedStrings.value = emptyList()
                     _filteredStrings.value = emptyList()
                 }
@@ -310,38 +365,6 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun selectString(string: ExtractedString?) {
         _selectedString.value = string
-    }
-
-    fun replaceSelectedString(replacement: String) {
-        val selected = _selectedString.value ?: run {
-            _errorMessage.value = "No string selected"
-            return
-        }
-
-        if (replacement.toByteArray().size > selected.length) {
-            _errorMessage.value = "Replacement exceeds original size (${selected.length} bytes). Use strict mode."
-            return
-        }
-
-        viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
-            val result = withContext(Dispatchers.IO) {
-                repository.replaceString(
-                    offset = selected.offset,
-                    originalLength = selected.length,
-                    replacement = replacement
-                )
-            }
-            result.onSuccess { path ->
-                _successMessage.value = "String replaced, saved to: $path"
-                _selectedString.value = null
-                reloadAfterPatch()
-            }.onFailure { e ->
-                _errorMessage.value = e.message ?: "Failed to replace string"
-            }
-            _isLoading.value = false
-        }
     }
 
     fun clearError() {

@@ -1,23 +1,20 @@
 package com.neomods.libeditor.ui.screens
 
-import android.view.ViewGroup
-import android.widget.LinearLayout
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.neomods.libeditor.model.ExtractedString
-import com.neomods.libeditor.ui.view.FastScrollerRecyclerView
-import com.neomods.libeditor.ui.view.StringAdapter
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 
 @Composable
@@ -29,7 +26,6 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
     val isLoading by viewModel.isLoading.collectAsState()
 
     var showReplaceDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -89,31 +85,55 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val stringAdapter = remember {
-                StringAdapter { string ->
-                    viewModel.selectString(string)
-                    showReplaceDialog = true
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                items(
+                    items = filteredStrings,
+                    key = { "${it.offset}_${it.value}" }
+                ) { string ->
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = string.value,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                text = "0x${string.offset.toString(16).uppercase()} | ${string.encoding.displayName} | ${string.length}B",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.TextFields,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.selectString(string)
+                                showReplaceDialog = true
+                            }
+                    )
                 }
             }
-
-            LaunchedEffect(filteredStrings) {
-                stringAdapter.submitList(filteredStrings)
-            }
-
-            AndroidView(
-                factory = {
-                    FastScrollerRecyclerView(context).apply {
-                        layoutManager = LinearLayoutManager(context)
-                        adapter = stringAdapter
-                        setHasFixedSize(true)
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.MATCH_PARENT
-                        )
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            )
         }
     }
 
@@ -125,7 +145,7 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
                 viewModel.selectString(null)
             },
             onReplace = { replacement ->
-                viewModel.replaceSelectedString(replacement)
+                viewModel.addStringEdit(replacement)
                 showReplaceDialog = false
             }
         )
@@ -143,7 +163,7 @@ fun ReplaceStringDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Replace String") },
+        title = { Text("Queue String Edit") },
         text = {
             Column {
                 Text(
@@ -187,7 +207,7 @@ fun ReplaceStringDialog(
                     supportingText = {
                         if (hasExceededSize) {
                             Text(
-                                text = "Exceeds original size (${string.length} bytes). Strict mode: rejected.",
+                                text = "Exceeds original size (${string.length} bytes).",
                                 color = MaterialTheme.colorScheme.error
                             )
                         } else {
@@ -202,7 +222,7 @@ fun ReplaceStringDialog(
                 onClick = { onReplace(replacement) },
                 enabled = replacement.isNotBlank() && !hasExceededSize
             ) {
-                Text("Replace")
+                Text("Queue")
             }
         },
         dismissButton = {

@@ -25,8 +25,8 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
     var patchInput by remember { mutableStateOf("") }
     var descriptionInput by remember { mutableStateOf("") }
 
-    var showPatchDialog by remember { mutableStateOf(false) }
     var editingPatch by remember { mutableStateOf<PatchEntry?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -185,10 +185,8 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
-                Row {
-                    TextButton(onClick = { viewModel.clearPatches() }) {
-                        Text("Clear All")
-                    }
+                TextButton(onClick = { viewModel.clearPatches() }) {
+                    Text("Clear All")
                 }
             }
 
@@ -204,35 +202,62 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
                         onToggle = { viewModel.togglePatch(patch.id) },
                         onEdit = {
                             editingPatch = patch
-                            showPatchDialog = true
+                            showEditDialog = true
                         },
-                        onDelete = { viewModel.deletePatch(patch.id) },
-                        onApplySingle = { viewModel.applySinglePatch(patch.id) }
+                        onDelete = { viewModel.deletePatch(patch.id) }
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Button(
-                onClick = { viewModel.applyAllPatches() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = patches.any { it.enabled }
-            ) {
-                Icon(Icons.Default.Save, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Apply All Patches")
             }
         }
     }
 
-    if (showPatchDialog && editingPatch != null) {
-        EditPatchDialog(
-            patch = editingPatch!!,
-            onDismiss = { showPatchDialog = false },
-            onSave = { updated ->
-                viewModel.updatePatch(updated.id, updated)
-                showPatchDialog = false
+    if (showEditDialog && editingPatch != null) {
+        var offset by remember { mutableStateOf(editingPatch!!.offset) }
+        var replacement by remember { mutableStateOf(editingPatch!!.replacementBytes) }
+        var description by remember { mutableStateOf(editingPatch!!.description) }
+
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Edit Patch") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = offset,
+                        onValueChange = { offset = it },
+                        label = { Text("Offset") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = replacement,
+                        onValueChange = { replacement = it },
+                        label = { Text("Replacement Bytes") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Description") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.updatePatch(
+                        editingPatch!!.id,
+                        editingPatch!!.copy(offset = offset, replacementBytes = replacement, description = description)
+                    )
+                    showEditDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -243,8 +268,7 @@ fun PatchCard(
     patch: PatchEntry,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onApplySingle: () -> Unit = {}
+    onDelete: () -> Unit
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -267,19 +291,16 @@ fun PatchCard(
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(
                         checked = patch.enabled,
                         onCheckedChange = { onToggle() }
                     )
-                    IconButton(onClick = onApplySingle) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Apply This Patch")
-                    }
                     IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -300,7 +321,7 @@ fun PatchCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Original (${patch.originalBytes.replace(" ", "").length / 2} bytes)",
+                        text = "Original (${patch.originalBytes.replace(" ", "").length / 2}B)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -312,7 +333,7 @@ fun PatchCard(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Replacement (${patch.replacementBytes.replace(" ", "").length / 2} bytes)",
+                        text = "Replace (${patch.replacementBytes.replace(" ", "").length / 2}B)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -327,93 +348,7 @@ fun PatchCard(
     }
 }
 
-@Composable
-fun EditPatchDialog(
-    patch: PatchEntry,
-    onDismiss: () -> Unit,
-    onSave: (PatchEntry) -> Unit
-) {
-    var offset by remember { mutableStateOf(patch.offset) }
-    var replacement by remember { mutableStateOf(patch.replacementBytes) }
-    var description by remember { mutableStateOf(patch.description) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit Patch") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = offset,
-                    onValueChange = { offset = it },
-                    label = { Text("Offset") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = replacement,
-                    onValueChange = { replacement = it },
-                    label = { Text("Replacement Bytes") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onSave(
-                    patch.copy(
-                        offset = offset,
-                        replacementBytes = replacement,
-                        description = description
-                    )
-                )
-            }) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
 fun formatHexDisplay(hex: String): String {
     val cleaned = hex.replace(" ", "").uppercase()
     return cleaned.chunked(2).joinToString(" ")
-}
-
-@Composable
-fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-fun formatFileSize(bytes: Long): String = when {
-    bytes < 1024 -> "$bytes B"
-    bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-    bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
-    else -> "${bytes / (1024 * 1024 * 1024)} GB"
 }
