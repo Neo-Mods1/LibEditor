@@ -1,4 +1,4 @@
-package com.neomods.libeditor.ui.screens.home
+package com.neomods.libeditor.ui.screens.filepicker
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,17 +29,16 @@ import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    onLibSelected: (String) -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToAbout: () -> Unit,
-    onNavigateToFilePicker: () -> Unit = {}
+fun FilePickerScreen(
+    onFileSelected: (String) -> Unit,
+    onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    var recentLibs by remember { mutableStateOf<List<File>>(emptyList()) }
+    var files by remember { mutableStateOf<List<File>>(emptyList()) }
+    var currentDir by remember { mutableStateOf<File?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -49,7 +49,7 @@ fun HomeScreen(
                     copyToInternal(context, it)
                 }
                 if (result != null) {
-                    onLibSelected(result)
+                    onFileSelected(result)
                 } else {
                     errorMessage = "Failed to copy file"
                 }
@@ -58,35 +58,48 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        isLoading = true
         val libDir = File(context.filesDir, "libraries")
         libDir.mkdirs()
-        recentLibs = libDir.listFiles()
+        currentDir = libDir
+        files = libDir.listFiles()
             ?.filter { it.isFile && it.extension == "so" }
             ?.sortedByDescending { it.lastModified() }
             ?: emptyList()
+        isLoading = false
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("NeoLibEditor", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Select .so File",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                    IconButton(onClick = onNavigateToAbout) {
-                        Icon(Icons.Default.Info, contentDescription = "About")
+                    IconButton(onClick = {
+                        filePickerLauncher.launch(arrayOf("application/octet-stream", "*/*"))
+                    }) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = "Browse")
                     }
                 }
             )
         }
-    ) { padding ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(paddingValues)
         ) {
             Card(
                 modifier = Modifier
@@ -99,13 +112,13 @@ fun HomeScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = stringResource(R.string.select_library),
+                        text = "Pick .so File",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.select_library_desc),
+                        text = "Select an ELF shared library to edit",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
@@ -118,14 +131,14 @@ fun HomeScreen(
                     ) {
                         Icon(Icons.Default.FolderOpen, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.pick_so_file))
+                        Text("Open File Picker")
                     }
                 }
             }
 
-            if (recentLibs.isNotEmpty()) {
+            if (files.isNotEmpty()) {
                 Text(
-                    text = stringResource(R.string.recent_libraries),
+                    text = "Recent Libraries",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -135,7 +148,7 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(recentLibs) { file ->
+                    items(files) { file ->
                         ListItem(
                             headlineContent = {
                                 Text(
@@ -165,7 +178,18 @@ fun HomeScreen(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onLibSelected(file.absolutePath) }
+                                .clickable {
+                                    scope.launch {
+                                        val result = withContext(Dispatchers.IO) {
+                                            copyInternalToLibrary(context, file)
+                                        }
+                                        if (result != null) {
+                                            onFileSelected(result)
+                                        } else {
+                                            errorMessage = "Failed to load file"
+                                        }
+                                    }
+                                }
                                 .padding(horizontal = 8.dp)
                         )
                     }
@@ -186,7 +210,7 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = stringResource(R.string.no_recent_libs),
+                            text = "No libraries yet.\nPick a .so file to get started.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -198,6 +222,7 @@ fun HomeScreen(
 
     errorMessage?.let { msg ->
         Snackbar(
+            modifier = Modifier.padding(16.dp),
             action = {
                 TextButton(onClick = { errorMessage = null }) {
                     Text("OK")
@@ -230,6 +255,23 @@ private fun copyToInternal(context: android.content.Context, uri: Uri): String? 
         }
 
         outputFile.absolutePath
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+private fun copyInternalToLibrary(context: android.content.Context, source: File): String? {
+    return try {
+        val libDir = File(context.filesDir, "libraries")
+        libDir.mkdirs()
+        val dest = File(libDir, source.name)
+
+        if (source.absolutePath != dest.absolutePath) {
+            source.copyTo(dest, overwrite = true)
+        }
+
+        dest.absolutePath
     } catch (e: Exception) {
         e.printStackTrace()
         null

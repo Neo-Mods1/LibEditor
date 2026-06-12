@@ -1,6 +1,7 @@
 package com.neomods.libeditor.repository
 
 import android.content.Context
+import android.os.Environment
 import com.neomods.libeditor.model.*
 import com.neomods.libeditor.service.JniBridge
 import com.neomods.libeditor.storage.SettingsManager
@@ -13,8 +14,15 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
     private var currentFilePath: String? = null
     private val settingsManager = SettingsManager(context)
 
-    fun getEditorDir(): File {
+    fun getInternalLibDir(): File {
         val dir = File(context.filesDir, "libraries")
+        dir.mkdirs()
+        return dir
+    }
+
+    fun getOutputDir(): File {
+        val location = runBlocking { settingsManager.editLocation.first() }
+        val dir = File(location)
         dir.mkdirs()
         return dir
     }
@@ -35,16 +43,18 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
         return jniBridge.readOffset(path, offset, length)
     }
 
-    fun applySinglePatch(patch: PatchEntry, outputPath: String? = null): Result<String> {
+    fun applySinglePatch(patch: PatchEntry): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: getEditorOutputPath(path)
-        return jniBridge.applyPatches(path, listOf(patch), out)
+        val fileName = File(path).name
+        val outputPath = File(getOutputDir(), fileName).absolutePath
+        return jniBridge.applyPatches(path, listOf(patch), outputPath)
     }
 
-    fun applyPatches(patches: List<PatchEntry>, outputPath: String? = null): Result<String> {
+    fun applyPatches(patches: List<PatchEntry>): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: getEditorOutputPath(path)
-        return jniBridge.applyPatches(path, patches, out)
+        val fileName = File(path).name
+        val outputPath = File(getOutputDir(), fileName).absolutePath
+        return jniBridge.applyPatches(path, patches, outputPath)
     }
 
     fun extractStrings(): Result<List<ExtractedString>> {
@@ -55,27 +65,27 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
     fun replaceString(
         offset: Long,
         originalLength: Int,
-        replacement: String,
-        outputPath: String? = null
+        replacement: String
     ): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val out = outputPath ?: getEditorOutputPath(path)
-        return jniBridge.replaceString(path, offset, originalLength, replacement, out)
+        val fileName = File(path).name
+        val outputPath = File(getOutputDir(), fileName).absolutePath
+        return jniBridge.replaceString(path, offset, originalLength, replacement, outputPath)
     }
 
-    fun getEditorOutputPath(originalPath: String): String {
-        val file = File(originalPath)
-        return File(getEditorDir(), file.name).absolutePath
-    }
-
-    fun reloadFromEditor(): Result<String> {
+    fun reloadFromOutput(): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val file = File(path)
-        val editorPath = File(getEditorDir(), file.name).absolutePath
-        if (File(editorPath).exists()) {
-            currentFilePath = editorPath
-            return Result.success(editorPath)
+        val fileName = File(path).name
+        val outputPath = File(getOutputDir(), fileName).absolutePath
+
+        if (!File(outputPath).exists()) {
+            return Result.failure(IllegalStateException("Patched file not found in output"))
         }
-        return Result.failure(IllegalStateException("File not found in Editor folder"))
+
+        val internalPath = File(getInternalLibDir(), fileName).absolutePath
+        File(outputPath).copyTo(File(internalPath), overwrite = true)
+
+        currentFilePath = internalPath
+        return Result.success(internalPath)
     }
 }

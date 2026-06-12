@@ -7,7 +7,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.neomods.libeditor.ui.screens.about.AboutScreen
 import com.neomods.libeditor.ui.screens.editor.EditorScreen
+import com.neomods.libeditor.ui.screens.filepicker.FilePickerScreen
 import com.neomods.libeditor.ui.screens.home.HomeScreen
+import com.neomods.libeditor.ui.screens.permission.PermissionScreen
 import com.neomods.libeditor.ui.screens.settings.SettingsScreen
 import com.neomods.libeditor.ui.screens.splash.SplashScreen
 
@@ -22,8 +24,18 @@ fun LibEditorNavGraph(
         composable(Screen.Splash.route) {
             SplashScreen(
                 onSplashComplete = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.Permission.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Permission.route) {
+            PermissionScreen(
+                onPermissionGranted = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Permission.route) { inclusive = true }
                     }
                 }
             )
@@ -39,6 +51,21 @@ fun LibEditorNavGraph(
                 },
                 onNavigateToAbout = {
                     navController.navigate(Screen.About.route)
+                },
+                onNavigateToFilePicker = {
+                    navController.navigate(Screen.FilePicker.route)
+                }
+            )
+        }
+
+        composable(Screen.FilePicker.route) {
+            FilePickerScreen(
+                onFileSelected = { path ->
+                    navController.popBackStack()
+                    navController.navigate("editor/${java.net.URLEncoder.encode(path, "UTF-8")}")
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -79,7 +106,9 @@ fun LibEditorNavGraph(
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
+    object Permission : Screen("permission")
     object Home : Screen("home")
+    object FilePicker : Screen("file_picker")
     object Editor : Screen("editor/{libPath}")
     object Settings : Screen("settings")
     object About : Screen("about")

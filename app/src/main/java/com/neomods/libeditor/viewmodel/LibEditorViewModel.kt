@@ -228,9 +228,9 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             val result = withContext(Dispatchers.IO) {
                 repository.applySinglePatch(patch)
             }
-            result.onSuccess { path ->
-                _successMessage.value = "Patch applied to: $path"
-                reloadFromEditor()
+            result.onSuccess { outputPath ->
+                _successMessage.value = "Patch saved to: $outputPath"
+                reloadAfterPatch()
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Failed to apply patch"
             }
@@ -251,9 +251,9 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             val result = withContext(Dispatchers.IO) {
                 repository.applyPatches(enabledPatches)
             }
-            result.onSuccess { path ->
-                _successMessage.value = "Patches saved to: $path"
-                reloadFromEditor()
+            result.onSuccess { outputPath ->
+                _successMessage.value = "Patches saved to: $outputPath"
+                reloadAfterPatch()
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Failed to apply patches"
             }
@@ -261,10 +261,10 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private fun reloadFromEditor() {
+    private fun reloadAfterPatch() {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                repository.reloadFromEditor()
+                repository.reloadFromOutput()
             }
             result.onSuccess { path ->
                 val infoResult = withContext(Dispatchers.IO) {
@@ -272,6 +272,9 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                 }
                 infoResult.onSuccess { info ->
                     _libraryInfo.value = info
+                    _patches.value = emptyList()
+                    _extractedStrings.value = emptyList()
+                    _filteredStrings.value = emptyList()
                 }
             }
         }
@@ -333,7 +336,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             result.onSuccess { path ->
                 _successMessage.value = "String replaced, saved to: $path"
                 _selectedString.value = null
-                reloadFromEditor()
+                reloadAfterPatch()
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Failed to replace string"
             }
