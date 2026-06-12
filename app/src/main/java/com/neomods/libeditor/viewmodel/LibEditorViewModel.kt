@@ -99,13 +99,22 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         return try {
             val inputStream = context.contentResolver.openInputStream(uri) ?: return null
             val fileName = getFileName(uri) ?: "temp_library.so"
-            val outputFile = File(repository.getEditorDir(), fileName)
+
+            val libDir = File(context.filesDir, "libraries")
+            libDir.mkdirs()
+            val outputFile = File(libDir, fileName)
 
             inputStream.use { input ->
                 outputFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
+
+            if (outputFile.length() == 0L) {
+                outputFile.delete()
+                return null
+            }
+
             outputFile.absolutePath
         } catch (e: Exception) {
             e.printStackTrace()

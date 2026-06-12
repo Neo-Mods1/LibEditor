@@ -13,7 +13,7 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
     private var currentFilePath: String? = null
     private val settingsManager = SettingsManager(context)
 
-    private fun getEditorDir(): File {
+    fun getEditorDir(): File {
         val dir = File(context.filesDir, "libraries")
         dir.mkdirs()
         return dir
