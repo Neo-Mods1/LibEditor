@@ -113,33 +113,30 @@ fun SettingsScreen(
                                 selected = currentTheme == ThemeMode.SYSTEM,
                                 onClick = { scope.launch { settingsManager.setThemeMode(ThemeMode.SYSTEM) } },
                                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                                icon = { SegmentedButtonDefaults.Icon(active = currentTheme == ThemeMode.SYSTEM) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                                }
+                                icon = { SegmentedButtonDefaults.Icon(active = currentTheme == ThemeMode.SYSTEM) }
                             ) {
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(stringResource(R.string.system_theme))
                             }
                             SegmentedButton(
                                 selected = currentTheme == ThemeMode.LIGHT,
                                 onClick = { scope.launch { settingsManager.setThemeMode(ThemeMode.LIGHT) } },
                                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                                icon = { SegmentedButtonDefaults.Icon(active = currentTheme == ThemeMode.LIGHT) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.LightMode, contentDescription = null, modifier = Modifier.size(18.dp))
-                                }
+                                icon = { SegmentedButtonDefaults.Icon(active = currentTheme == ThemeMode.LIGHT) }
                             ) {
+                                Icon(Icons.Default.LightMode, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(stringResource(R.string.light_theme))
                             }
                             SegmentedButton(
                                 selected = currentTheme == ThemeMode.DARK,
                                 onClick = { scope.launch { settingsManager.setThemeMode(ThemeMode.DARK) } },
                                 shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                                icon = { SegmentedButtonDefaults.Icon(active = currentTheme == ThemeMode.DARK) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(18.dp))
-                                }
+                                icon = { SegmentedButtonDefaults.Icon(active = currentTheme == ThemeMode.DARK) }
                             ) {
+                                Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(stringResource(R.string.dark_theme))
                             }
                         }
