@@ -24,7 +24,6 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
     var offsetInput by remember { mutableStateOf("") }
     var patchInput by remember { mutableStateOf("") }
     var descriptionInput by remember { mutableStateOf("") }
-    var eightByteLock by remember { mutableStateOf(false) }
 
     var editingPatch by remember { mutableStateOf<PatchEntry?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -42,6 +41,8 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
             0
         }
     }
+
+    val readLength = if (replacementByteCount > 0) replacementByteCount else 8
 
     fun doReadOffset(offset: String, length: Int) {
         viewModel.readOffset(offset, length)
@@ -86,47 +87,19 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = eightByteLock,
-                    onCheckedChange = { eightByteLock = it }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "8-byte lock",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (replacementByteCount > 0) {
-                Text(
-                    text = "${replacementByteCount}B",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (eightByteLock && replacementByteCount > 8)
-                        MaterialTheme.colorScheme.error
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        if (replacementByteCount > 8) {
+            Text(
+                text = "Reading ${replacementByteCount} bytes (exceeds 8, confirmation required)",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = {
-                val readLen = if (eightByteLock) {
-                    minOf(replacementByteCount, 8).coerceAtLeast(1)
-                } else {
-                    replacementByteCount.coerceAtLeast(1)
-                }
-                doReadOffset(offsetInput, readLen)
+                doReadOffset(offsetInput, readLength)
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = offsetInput.isNotBlank() && replacementByteCount > 0 && !isLoading
@@ -141,7 +114,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
             }
             Icon(Icons.Default.Search, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Read ${if (eightByteLock) minOf(replacementByteCount, 8) else replacementByteCount} bytes from offset")
+            Text("Read $readLength bytes from offset")
         }
 
         currentReadResult?.let { (hex, bytes) ->
