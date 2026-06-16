@@ -5,7 +5,9 @@ use std::path::Path;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PatchEntry {
     pub offset: String,
+    #[serde(rename = "originalBytes")]
     pub original_bytes: String,
+    #[serde(rename = "replacementBytes")]
     pub replacement_bytes: String,
     pub enabled: bool,
     pub description: String,

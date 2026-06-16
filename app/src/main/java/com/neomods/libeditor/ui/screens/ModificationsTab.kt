@@ -217,15 +217,22 @@ fun ModificationPatchCard(
         var offset by remember { mutableStateOf(patch.offset) }
         var replacement by remember { mutableStateOf(patch.replacementBytes) }
         var description by remember { mutableStateOf(patch.description) }
-        var readLength by remember { mutableStateOf("4") }
+
+        val replacementByteCount = remember(replacement) {
+            val cleaned = replacement.replace(" ", "").uppercase()
+            if (cleaned.isNotEmpty() && cleaned.length % 2 == 0 && cleaned.all { it in '0'..'9' || it in 'A'..'F' }) {
+                cleaned.length / 2
+            } else 0
+        }
 
         val currentReadResult by viewModel.currentReadResult.collectAsState()
 
-        LaunchedEffect(offset) {
-            val parsed = viewModel.parseHexOffsetPublic(offset)
-            if (parsed != null && parsed >= 0) {
-                val len = readLength.toIntOrNull() ?: 4
-                viewModel.readOffset(offset, len)
+        LaunchedEffect(offset, replacementByteCount) {
+            if (replacementByteCount > 0) {
+                val parsed = viewModel.parseHexOffsetPublic(offset)
+                if (parsed != null && parsed >= 0) {
+                    viewModel.readOffset(offset, replacementByteCount)
+                }
             }
         }
 
@@ -240,13 +247,6 @@ fun ModificationPatchCard(
                         value = offset,
                         onValueChange = { offset = it },
                         label = { Text("Offset") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = readLength,
-                        onValueChange = { readLength = it.filter { c -> c.isDigit() } },
-                        label = { Text("Read Length (bytes)") },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))

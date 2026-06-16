@@ -24,10 +24,32 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
     var offsetInput by remember { mutableStateOf("") }
     var patchInput by remember { mutableStateOf("") }
     var descriptionInput by remember { mutableStateOf("") }
-    var readLengthInput by remember { mutableStateOf("4") }
+    var eightByteLock by remember { mutableStateOf(false) }
 
     var editingPatch by remember { mutableStateOf<PatchEntry?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
+
+    var showLargePatchWarning by remember { mutableStateOf(false) }
+    var pendingPatchOffset by remember { mutableStateOf("") }
+    var pendingPatchBytes by remember { mutableStateOf("") }
+    var pendingPatchDesc by remember { mutableStateOf("") }
+
+    val replacementByteCount = remember(patchInput) {
+        val cleaned = patchInput.replace(" ", "").replace("0x", "", ignoreCase = true)
+        if (cleaned.isNotEmpty() && cleaned.length % 2 == 0 && cleaned.all { it in '0'..'9' || it in 'A'..'F' || it in 'a'..'f' }) {
+            cleaned.length / 2
+        } else {
+            0
+        }
+    }
+
+    fun doReadOffset(offset: String, length: Int) {
+        viewModel.readOffset(offset, length)
+    }
+
+    fun doAddPatch(offset: String, replacement: String, desc: String) {
+        viewModel.addPatch(offset, replacement, desc)
+    }
 
     Column(
         modifier = Modifier
@@ -54,17 +76,6 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = readLengthInput,
-            onValueChange = { readLengthInput = it.filter { c -> c.isDigit() } },
-            label = { Text("Read Length (bytes)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            leadingIcon = { Icon(Icons.Default.Straighten, contentDescription = null) }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
             value = patchInput,
             onValueChange = { patchInput = it },
             label = { Text("Replacement Bytes (e.g., 00 00 A0 E3)") },
@@ -73,15 +84,52 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
         )
 
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = eightByteLock,
+                    onCheckedChange = { eightByteLock = it }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "8-byte lock",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (replacementByteCount > 0) {
+                Text(
+                    text = "${replacementByteCount}B",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (eightByteLock && replacementByteCount > 8)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = {
-                val len = readLengthInput.toIntOrNull() ?: 4
-                viewModel.readOffset(offsetInput, len)
+                val readLen = if (eightByteLock) {
+                    minOf(replacementByteCount, 8).coerceAtLeast(1)
+                } else {
+                    replacementByteCount.coerceAtLeast(1)
+                }
+                doReadOffset(offsetInput, readLen)
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = offsetInput.isNotBlank() && !isLoading
+            enabled = offsetInput.isNotBlank() && replacementByteCount > 0 && !isLoading
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
@@ -93,7 +141,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
             }
             Icon(Icons.Default.Search, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Read from offset")
+            Text("Read ${if (eightByteLock) minOf(replacementByteCount, 8) else replacementByteCount} bytes from offset")
         }
 
         currentReadResult?.let { (hex, bytes) ->
@@ -114,11 +162,13 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
                         fontWeight = FontWeight.Bold
                     )
 
-                    if (patchInput.isNotBlank()) {
-                        val normalizedReplacement = patchInput.replace(" ", "").uppercase()
-                        val replacementBytes = normalizedReplacement.chunked(2).map { it.toInt(16) }
-                        val sizeMatch = replacementBytes.size == bytes.size
+                    val normalizedReplacement = patchInput.replace(" ", "").uppercase()
+                    val replacementBytes = if (normalizedReplacement.isNotEmpty() && normalizedReplacement.length % 2 == 0) {
+                        normalizedReplacement.chunked(2).map { it.toInt(16) }
+                    } else emptyList()
+                    val sizeMatch = replacementBytes.size == bytes.size
 
+                    if (replacementBytes.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Replacement (${replacementBytes.size} bytes)",
@@ -136,7 +186,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
                         if (!sizeMatch) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Size mismatch: original is ${bytes.size} bytes, replacement is ${replacementBytes.size} bytes",
+                                text = "Size mismatch: read ${bytes.size} bytes, replacement is ${replacementBytes.size} bytes",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -160,9 +210,16 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
 
         OutlinedButton(
             onClick = {
-                viewModel.addPatch(offsetInput, patchInput, descriptionInput)
-                patchInput = ""
-                descriptionInput = ""
+                if (replacementByteCount > 8) {
+                    pendingPatchOffset = offsetInput
+                    pendingPatchBytes = patchInput
+                    pendingPatchDesc = descriptionInput
+                    showLargePatchWarning = true
+                } else {
+                    doAddPatch(offsetInput, patchInput, descriptionInput)
+                    patchInput = ""
+                    descriptionInput = ""
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = offsetInput.isNotBlank() && patchInput.isNotBlank() && currentReadResult != null
@@ -211,6 +268,31 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
         }
     }
 
+    if (showLargePatchWarning) {
+        AlertDialog(
+            onDismissRequest = { showLargePatchWarning = false },
+            title = { Text("Large Patch Warning") },
+            text = {
+                Text("This patch modifies ${pendingPatchBytes.replace(" ", "").length / 2} bytes. Patches larger than 8 bytes can affect library runtime behavior and may cause crashes or instability. Are you sure you want to proceed?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    doAddPatch(pendingPatchOffset, pendingPatchBytes, pendingPatchDesc)
+                    patchInput = ""
+                    descriptionInput = ""
+                    showLargePatchWarning = false
+                }) {
+                    Text("Proceed")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLargePatchWarning = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (showEditDialog && editingPatch != null) {
         EditPatchDialog(
             patch = editingPatch!!,
@@ -234,17 +316,20 @@ fun EditPatchDialog(
     var offset by remember { mutableStateOf(patch.offset) }
     var replacement by remember { mutableStateOf(patch.replacementBytes) }
     var description by remember { mutableStateOf(patch.description) }
-    var readLength by remember { mutableStateOf("4") }
-    var reReadResult by remember { mutableStateOf<Pair<String, List<Int>>?>(null) }
-    var isReReading by remember { mutableStateOf(false) }
 
-    LaunchedEffect(offset) {
-        val parsed = viewModel.parseHexOffsetPublic(offset)
-        if (parsed != null && parsed >= 0) {
-            isReReading = true
-            val len = readLength.toIntOrNull() ?: 4
-            viewModel.readOffset(offset, len)
-            isReReading = false
+    val replacementByteCount = remember(replacement) {
+        val cleaned = replacement.replace(" ", "").uppercase()
+        if (cleaned.isNotEmpty() && cleaned.length % 2 == 0 && cleaned.all { it in '0'..'9' || it in 'A'..'F' }) {
+            cleaned.length / 2
+        } else 0
+    }
+
+    LaunchedEffect(offset, replacementByteCount) {
+        if (replacementByteCount > 0) {
+            val parsed = viewModel.parseHexOffsetPublic(offset)
+            if (parsed != null && parsed >= 0) {
+                viewModel.readOffset(offset, replacementByteCount)
+            }
         }
     }
 
@@ -262,15 +347,10 @@ fun EditPatchDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = readLength,
-                    onValueChange = { readLength = it.filter { c -> c.isDigit() } },
-                    label = { Text("Read Length (bytes)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
 
-                currentReadResult?.let { (hex, bytes) ->
+                currentReadResult?.let { result ->
+                    val hex = result.first
+                    val bytes = result.second
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             Text(
