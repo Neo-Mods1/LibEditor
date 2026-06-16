@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -30,8 +31,10 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
             text = "String Editor",
             style = MaterialTheme.typography.titleMedium,
@@ -43,7 +46,7 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { viewModel.filterStrings(it) },
-            label = { Text("Search strings...") },
+            label = { Text("Search strings") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
@@ -53,85 +56,171 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
                         Icon(Icons.Default.Clear, contentDescription = "Clear")
                     }
                 }
-            }
+            },
+            shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
         if (extractedStrings.isEmpty()) {
-            Button(
-                onClick = { viewModel.extractStrings() },
+            ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
+                shape = RoundedCornerShape(16.dp)
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.TextFields,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "No strings extracted yet",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Extract strings from the loaded library to browse and edit them",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { viewModel.extractStrings() },
+                        enabled = !isLoading,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        } else {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text("Extract Strings")
+                    }
                 }
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Extract Strings")
             }
         } else {
-            Text(
-                text = "Found ${filteredStrings.size} strings",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Results",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "${filteredStrings.size}",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(
                     items = filteredStrings,
                     key = { "${it.offset}_${it.value}" }
                 ) { string ->
-                    ListItem(
-                        headlineContent = {
-                            Text(
-                                text = string.value,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        },
-                        supportingContent = {
-                            Text(
-                                text = "0x${string.offset.toString(16).uppercase()} | ${string.encoding.displayName} | ${string.length}B",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.TextFields,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        },
-                        trailingContent = {
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
+                    ElevatedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
                                 viewModel.selectString(string)
                                 showReplaceDialog = true
+                            },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            ) {
+                                Icon(
+                                    Icons.Default.TextFields,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(6.dp)
+                                        .size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
-                    )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = string.value,
+                                    fontFamily = FontFamily.Monospace,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "0x${string.offset.toString(16).uppercase()}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = MaterialTheme.colorScheme.secondaryContainer
+                                    ) {
+                                        Text(
+                                            text = string.encoding.displayName,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                    Text(
+                                        text = "${string.length}B",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -165,35 +254,50 @@ fun ReplaceStringDialog(
         onDismissRequest = onDismiss,
         title = { Text("Queue String Edit") },
         text = {
-            Column {
-                Text(
-                    text = "Original",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = string.value,
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ) {
-                    Text(
-                        text = "Offset: 0x${string.offset.toString(16).uppercase()}",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "Size: ${string.length} bytes",
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Original",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = string.value,
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Text(
+                                    text = "0x${string.offset.toString(16).uppercase()}",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Text(
+                                    text = "${string.length}B",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
                     value = replacement,
@@ -207,13 +311,14 @@ fun ReplaceStringDialog(
                     supportingText = {
                         if (hasExceededSize) {
                             Text(
-                                text = "Exceeds original size (${string.length} bytes).",
+                                text = "Exceeds original size (${string.length} bytes)",
                                 color = MaterialTheme.colorScheme.error
                             )
                         } else {
                             Text("${replacement.toByteArray().size}/${string.length} bytes")
                         }
-                    }
+                    },
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
         },
