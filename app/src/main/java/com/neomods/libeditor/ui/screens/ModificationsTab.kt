@@ -94,6 +94,7 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
                     items(patches, key = { "patch_${it.id}" }) { patch ->
                         ModificationPatchCard(
                             patch = patch,
+                            viewModel = viewModel,
                             onToggle = { viewModel.togglePatch(patch.id) },
                             onDelete = { viewModel.deletePatch(patch.id) },
                             onEdit = { updated -> viewModel.updatePatch(updated.id, updated) }
@@ -128,6 +129,7 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
 @Composable
 fun ModificationPatchCard(
     patch: PatchEntry,
+    viewModel: LibEditorViewModel,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     onEdit: (PatchEntry) -> Unit
@@ -227,6 +229,8 @@ fun ModificationPatchCard(
             }
         }
 
+        val readResult = currentReadResult
+
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
             title = { Text("Edit Patch") },
@@ -247,7 +251,9 @@ fun ModificationPatchCard(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    currentReadResult?.let { (hex, bytes) ->
+                    if (readResult != null) {
+                        val hex = readResult.first
+                        val bytes = readResult.second
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text(
@@ -283,7 +289,7 @@ fun ModificationPatchCard(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val readBytes = currentReadResult?.first ?: patch.originalBytes
+                    val readBytes = readResult?.first ?: patch.originalBytes
                     val normalizedOriginal = readBytes.replace(" ", "").uppercase()
                     onEdit(
                         patch.copy(

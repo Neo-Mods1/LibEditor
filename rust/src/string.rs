@@ -1,4 +1,4 @@
-use crate::elf::{ElfData, ElfError, ExtractedString};
+use crate::elf::{ElfData, ExtractedString};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
