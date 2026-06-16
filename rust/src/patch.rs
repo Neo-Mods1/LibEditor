@@ -9,8 +9,14 @@ pub struct PatchEntry {
     pub original_bytes: String,
     #[serde(rename = "replacementBytes")]
     pub replacement_bytes: String,
+    #[serde(default = "default_enabled")]
     pub enabled: bool,
+    #[serde(default)]
     pub description: String,
+}
+
+fn default_enabled() -> bool {
+    true
 }
 
 #[derive(Debug, Serialize)]
