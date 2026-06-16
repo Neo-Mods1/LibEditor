@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,33 +48,18 @@ fun EmptyStateCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ErrorSnackbar(
+fun ErrorDialog(
     message: String,
     onDismiss: () -> Unit
 ) {
-    Snackbar(
-        action = {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Error") },
+        text = { Text(message) },
+        confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Dismiss")
+                Text("OK")
             }
         }
-    ) {
-        Text(message)
-    }
-}
-
-@Composable
-fun SuccessSnackbar(
-    message: String,
-    onDismiss: () -> Unit
-) {
-    Snackbar(
-        action = {
-            TextButton(onClick = onDismiss) {
-                Text("Dismiss")
-            }
-        }
-    ) {
-        Text(message)
-    }
+    )
 }

@@ -215,6 +215,17 @@ fun ModificationPatchCard(
         var offset by remember { mutableStateOf(patch.offset) }
         var replacement by remember { mutableStateOf(patch.replacementBytes) }
         var description by remember { mutableStateOf(patch.description) }
+        var readLength by remember { mutableStateOf("4") }
+
+        val currentReadResult by viewModel.currentReadResult.collectAsState()
+
+        LaunchedEffect(offset) {
+            val parsed = viewModel.parseHexOffsetPublic(offset)
+            if (parsed != null && parsed >= 0) {
+                val len = readLength.toIntOrNull() ?: 4
+                viewModel.readOffset(offset, len)
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
@@ -228,6 +239,33 @@ fun ModificationPatchCard(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = readLength,
+                        onValueChange = { readLength = it.filter { c -> c.isDigit() } },
+                        label = { Text("Read Length (bytes)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    currentReadResult?.let { (hex, bytes) ->
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text(
+                                    text = "Current bytes at offset (${bytes.size}B)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = formatHexDisplay(hex),
+                                    fontFamily = FontFamily.Monospace,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     OutlinedTextField(
                         value = replacement,
                         onValueChange = { replacement = it },
@@ -245,7 +283,16 @@ fun ModificationPatchCard(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onEdit(patch.copy(offset = offset, replacementBytes = replacement, description = description))
+                    val readBytes = currentReadResult?.first ?: patch.originalBytes
+                    val normalizedOriginal = readBytes.replace(" ", "").uppercase()
+                    onEdit(
+                        patch.copy(
+                            offset = offset,
+                            originalBytes = normalizedOriginal,
+                            replacementBytes = replacement,
+                            description = description
+                        )
+                    )
                     showEditDialog = false
                 }) {
                     Text("Save")

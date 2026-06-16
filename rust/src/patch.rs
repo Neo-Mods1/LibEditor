@@ -71,6 +71,27 @@ impl PatchApplier {
             self.validate_patch(patch)?;
         }
 
+        for i in 0..enabled.len() {
+            for j in (i + 1)..enabled.len() {
+                let off_a = parse_hex_offset(&enabled[i].offset)?;
+                let len_a = parse_hex_string(&enabled[i].replacement_bytes)?.len() as u64;
+                let off_b = parse_hex_offset(&enabled[j].offset)?;
+                let len_b = parse_hex_string(&enabled[j].replacement_bytes)?.len() as u64;
+
+                let a_start = off_a;
+                let a_end = off_a + len_a;
+                let b_start = off_b;
+                let b_end = off_b + len_b;
+
+                if a_start < b_end && b_start < a_end {
+                    return Err(ElfError::InvalidHex(format!(
+                        "Patches overlap: patch at {} ({}-{}) overlaps with patch at {} ({}-{})",
+                        enabled[i].offset, a_start, a_end, enabled[j].offset, b_start, b_end
+                    )));
+                }
+            }
+        }
+
         for patch in &enabled {
             self.apply_patch(patch)?;
         }

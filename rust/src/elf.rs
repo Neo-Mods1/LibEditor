@@ -199,29 +199,28 @@ fn extract_ascii_strings(bytes: &[u8], strings: &mut Vec<ExtractedString>) {
 
 fn extract_utf16_strings(bytes: &[u8], strings: &mut Vec<ExtractedString>) {
     let min_length = 4;
-    let mut current = Vec::new();
+    let mut code_units: Vec<u16> = Vec::new();
     let mut start_offset = 0u64;
 
     for (i, chunk) in bytes.windows(2).step_by(2).enumerate() {
         let val = u16::from_le_bytes([chunk[0], chunk[1]]);
 
         if val >= 0x20 && val < 0x7f {
-            if current.is_empty() {
+            if code_units.is_empty() {
                 start_offset = (i * 2) as u64;
             }
-            current.push(val as u8);
+            code_units.push(val);
         } else {
-            if current.len() >= min_length {
-                if let Ok(s) = String::from_utf8(current.clone()) {
-                    strings.push(ExtractedString {
-                        offset: start_offset,
-                        value: s,
-                        encoding: "UTF16LE".to_string(),
-                        length: current.len() * 2,
-                    });
-                }
+            if code_units.len() >= min_length {
+                let display_value: String = code_units.iter().map(|&c| c as u8 as char).collect();
+                strings.push(ExtractedString {
+                    offset: start_offset,
+                    value: display_value,
+                    encoding: "UTF16LE".to_string(),
+                    length: code_units.len() * 2,
+                });
             }
-            current.clear();
+            code_units.clear();
         }
     }
 }

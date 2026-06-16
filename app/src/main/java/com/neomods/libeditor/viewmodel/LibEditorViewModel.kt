@@ -175,7 +175,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         description: String = ""
     ) {
         val current = _currentReadResult.value ?: run {
-            _errorMessage.value = "Read the offset first"
+            _errorMessage.value = "Read the offset first before adding a patch"
             return
         }
 
@@ -234,7 +234,8 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
 
-        if (replacement.toByteArray().size > selected.length) {
+        val replacementBytes = replacement.toByteArray()
+        if (replacementBytes.size > selected.length) {
             _errorMessage.value = "Replacement exceeds original size (${selected.length} bytes)"
             return
         }
@@ -277,14 +278,22 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             _isLoading.value = true
             _errorMessage.value = null
 
-            var patchPath: String? = null
-            var editPath: String? = null
+            val backupResult = withContext(Dispatchers.IO) {
+                repository.backupOriginal()
+            }
+            backupResult.onFailure { e ->
+                _errorMessage.value = "Backup failed: ${e.message}"
+                _isLoading.value = false
+                return@launch
+            }
+
+            var outputPath: String? = null
 
             if (enabledPatches.isNotEmpty()) {
                 val patchResult = withContext(Dispatchers.IO) {
                     repository.applyPatches(enabledPatches)
                 }
-                patchResult.onSuccess { path -> patchPath = path }
+                patchResult.onSuccess { path -> outputPath = path }
                 patchResult.onFailure { e ->
                     _errorMessage.value = "Patch error: ${e.message}"
                     _isLoading.value = false
@@ -292,24 +301,54 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
 
-            for (edit in enabledEdits) {
-                val editResult = withContext(Dispatchers.IO) {
-                    repository.replaceString(edit.offset, edit.originalLength, edit.replacement)
+            if (enabledEdits.isNotEmpty()) {
+                val patchedFilePath = outputPath ?: withContext(Dispatchers.IO) {
+                    repository.getCurrentFilePath()
                 }
-                editResult.onSuccess { path -> editPath = path }
-                editResult.onFailure { e ->
-                    _errorMessage.value = "String edit error: ${e.message}"
+                if (patchedFilePath == null) {
+                    _errorMessage.value = "No file to apply string edits to"
                     _isLoading.value = false
                     return@launch
                 }
+
+                for (edit in enabledEdits) {
+                    val editResult = withContext(Dispatchers.IO) {
+                        repository.replaceString(patchedFilePath, edit.offset, edit.originalLength, edit.replacement)
+                    }
+                    editResult.onSuccess { path -> outputPath = path }
+                    editResult.onFailure { e ->
+                        _errorMessage.value = "String edit error: ${e.message}"
+                        _isLoading.value = false
+                        return@launch
+                    }
+                }
             }
 
-            val savedPath = patchPath ?: editPath
+            val savedPath = outputPath
             if (savedPath != null) {
                 _successMessage.value = "Saved to: $savedPath"
                 reloadAfterPatch()
             } else {
                 _errorMessage.value = "Failed to save modifications"
+            }
+            _isLoading.value = false
+        }
+    }
+
+    fun revertToOriginal() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            val result = withContext(Dispatchers.IO) {
+                repository.restoreFromBackup()
+            }
+            result.onSuccess { path ->
+                _patches.value = emptyList()
+                _stringEdits.value = emptyList()
+                _successMessage.value = "Reverted to original"
+                loadLibrary(path)
+            }.onFailure { e ->
+                _errorMessage.value = e.message ?: "Failed to revert"
             }
             _isLoading.value = false
         }
@@ -384,11 +423,15 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
     private fun parseHexOffset(hex: String): Long? {
         return try {
             val cleaned = hex.trim().removePrefix("0x").removePrefix("0X").replace(" ", "")
-            cleaned.toLong(16)
+            if (cleaned.isEmpty()) return null
+            if (cleaned.length > 16) return null
+            java.lang.Long.parseUnsignedLong(cleaned, 16)
         } catch (e: Exception) {
             null
         }
     }
+
+    fun parseHexOffsetPublic(hex: String): Long? = parseHexOffset(hex)
 
     private fun normalizeHex(hex: String): String? {
         val cleaned = hex.trim()

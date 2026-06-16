@@ -197,15 +197,16 @@ fun HomeScreen(
     }
 
     errorMessage?.let { msg ->
-        Snackbar(
-            action = {
+        AlertDialog(
+            onDismissRequest = { errorMessage = null },
+            title = { Text("Error") },
+            text = { Text(msg) },
+            confirmButton = {
                 TextButton(onClick = { errorMessage = null }) {
                     Text("OK")
                 }
             }
-        ) {
-            Text(msg)
-        }
+        )
     }
 }
 

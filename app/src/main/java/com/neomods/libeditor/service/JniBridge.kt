@@ -33,7 +33,7 @@ class JniBridge(private val context: Context) {
     private fun isErrorJson(response: String): Boolean {
         return try {
             val obj = json.decodeFromString<JsonObject>(response)
-            obj.containsKey("error")
+            obj.containsKey("error") && obj["error"] != null && obj["error"]!!.jsonPrimitive.content.isNotEmpty()
         } catch (_: Exception) {
             false
         }

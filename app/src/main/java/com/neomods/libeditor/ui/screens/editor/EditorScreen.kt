@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.neomods.libeditor.R
-import com.neomods.libeditor.ui.components.ErrorSnackbar
+import com.neomods.libeditor.ui.components.ErrorDialog
 import com.neomods.libeditor.ui.screens.*
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 import kotlin.math.roundToInt
@@ -80,6 +80,9 @@ fun EditorScreen(
                             IconButton(onClick = { viewModel.saveAllModifications() }) {
                                 Icon(Icons.Default.Save, contentDescription = "Save All")
                             }
+                        }
+                        IconButton(onClick = { viewModel.revertToOriginal() }) {
+                            Icon(Icons.Default.Restore, contentDescription = "Revert to Original")
                         }
                         IconButton(onClick = { showInfoSheet = !showInfoSheet }) {
                             Icon(Icons.Default.Info, contentDescription = "Library Info")
@@ -226,7 +229,7 @@ fun EditorScreen(
     }
 
     errorMessage?.let { msg ->
-        ErrorSnackbar(message = msg, onDismiss = { viewModel.clearError() })
+        ErrorDialog(message = msg, onDismiss = { viewModel.clearError() })
     }
 
     successMessage?.let { msg ->

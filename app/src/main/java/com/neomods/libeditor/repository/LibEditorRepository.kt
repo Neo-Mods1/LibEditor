@@ -20,6 +20,12 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
         return dir
     }
 
+    fun getBackupDir(): File {
+        val dir = File(context.filesDir, "backups")
+        dir.mkdirs()
+        return dir
+    }
+
     fun getOutputDir(): File {
         val location = runBlocking { settingsManager.editLocation.first() }
         val dir = File(location)
@@ -43,11 +49,8 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
         return jniBridge.readOffset(path, offset, length)
     }
 
-    fun applySinglePatch(patch: PatchEntry): Result<String> {
-        val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val fileName = File(path).name
-        val outputPath = File(getOutputDir(), fileName).absolutePath
-        return jniBridge.applyPatches(path, listOf(patch), outputPath)
+    fun readOffset(path: String, offset: Long, length: Int): Result<Pair<String, List<Int>>> {
+        return jniBridge.readOffset(path, offset, length)
     }
 
     fun applyPatches(patches: List<PatchEntry>): Result<String> {
@@ -57,20 +60,39 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
         return jniBridge.applyPatches(path, patches, outputPath)
     }
 
+    fun replaceString(
+        filePath: String,
+        offset: Long,
+        originalLength: Int,
+        replacement: String
+    ): Result<String> {
+        val fileName = File(filePath).name
+        val outputPath = File(getOutputDir(), fileName).absolutePath
+        return jniBridge.replaceString(filePath, offset, originalLength, replacement, outputPath)
+    }
+
     fun extractStrings(): Result<List<ExtractedString>> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
         return jniBridge.extractStrings(path)
     }
 
-    fun replaceString(
-        offset: Long,
-        originalLength: Int,
-        replacement: String
-    ): Result<String> {
+    fun backupOriginal(): Result<String> {
         val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
-        val fileName = File(path).name
-        val outputPath = File(getOutputDir(), fileName).absolutePath
-        return jniBridge.replaceString(path, offset, originalLength, replacement, outputPath)
+        val source = File(path)
+        val backup = File(getBackupDir(), source.name)
+        source.copyTo(backup, overwrite = true)
+        return Result.success(backup.absolutePath)
+    }
+
+    fun restoreFromBackup(): Result<String> {
+        val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
+        val source = File(path)
+        val backup = File(getBackupDir(), source.name)
+        if (!backup.exists()) {
+            return Result.failure(IllegalStateException("No backup found"))
+        }
+        backup.copyTo(source, overwrite = true)
+        return Result.success(source.absolutePath)
     }
 
     fun reloadFromOutput(): Result<String> {

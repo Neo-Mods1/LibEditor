@@ -24,6 +24,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
     var offsetInput by remember { mutableStateOf("") }
     var patchInput by remember { mutableStateOf("") }
     var descriptionInput by remember { mutableStateOf("") }
+    var readLengthInput by remember { mutableStateOf("4") }
 
     var editingPatch by remember { mutableStateOf<PatchEntry?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -53,6 +54,17 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
+            value = readLengthInput,
+            onValueChange = { readLengthInput = it.filter { c -> c.isDigit() } },
+            label = { Text("Read Length (bytes)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Default.Straighten, contentDescription = null) }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
             value = patchInput,
             onValueChange = { patchInput = it },
             label = { Text("Replacement Bytes (e.g., 00 00 A0 E3)") },
@@ -63,18 +75,9 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        val replacementLength = remember(patchInput) {
-            val cleaned = patchInput.replace(" ", "").replace("0x", "", ignoreCase = true)
-            if (cleaned.isNotEmpty() && cleaned.length % 2 == 0 && cleaned.all { it in '0'..'9' || it in 'A'..'F' || it in 'a'..'f' }) {
-                cleaned.length / 2
-            } else {
-                0
-            }
-        }
-
         Button(
             onClick = {
-                val len = if (replacementLength > 0) replacementLength else 4
+                val len = readLengthInput.toIntOrNull() ?: 4
                 viewModel.readOffset(offsetInput, len)
             },
             modifier = Modifier.fillMaxWidth(),
@@ -90,10 +93,7 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
             }
             Icon(Icons.Default.Search, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                if (replacementLength > 0) "Read $replacementLength bytes from offset"
-                else "Read Current Value"
-            )
+            Text("Read from offset")
         }
 
         currentReadResult?.let { (hex, bytes) ->
@@ -212,55 +212,120 @@ fun AddressPatchingTab(viewModel: LibEditorViewModel) {
     }
 
     if (showEditDialog && editingPatch != null) {
-        var offset by remember { mutableStateOf(editingPatch!!.offset) }
-        var replacement by remember { mutableStateOf(editingPatch!!.replacementBytes) }
-        var description by remember { mutableStateOf(editingPatch!!.description) }
-
-        AlertDialog(
-            onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit Patch") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = offset,
-                        onValueChange = { offset = it },
-                        label = { Text("Offset") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = replacement,
-                        onValueChange = { replacement = it },
-                        label = { Text("Replacement Bytes") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = description,
-                        onValueChange = { description = it },
-                        label = { Text("Description") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.updatePatch(
-                        editingPatch!!.id,
-                        editingPatch!!.copy(offset = offset, replacementBytes = replacement, description = description)
-                    )
-                    showEditDialog = false
-                }) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) {
-                    Text("Cancel")
-                }
+        EditPatchDialog(
+            patch = editingPatch!!,
+            viewModel = viewModel,
+            onDismiss = { showEditDialog = false },
+            onSave = { updated ->
+                viewModel.updatePatch(editingPatch!!.id, updated)
+                showEditDialog = false
             }
         )
     }
+}
+
+@Composable
+fun EditPatchDialog(
+    patch: PatchEntry,
+    viewModel: LibEditorViewModel,
+    onDismiss: () -> Unit,
+    onSave: (PatchEntry) -> Unit
+) {
+    var offset by remember { mutableStateOf(patch.offset) }
+    var replacement by remember { mutableStateOf(patch.replacementBytes) }
+    var description by remember { mutableStateOf(patch.description) }
+    var readLength by remember { mutableStateOf("4") }
+    var reReadResult by remember { mutableStateOf<Pair<String, List<Int>>?>(null) }
+    var isReReading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(offset) {
+        val parsed = viewModel.parseHexOffsetPublic(offset)
+        if (parsed != null && parsed >= 0) {
+            isReReading = true
+            val len = readLength.toIntOrNull() ?: 4
+            viewModel.readOffset(offset, len)
+            isReReading = false
+        }
+    }
+
+    val currentReadResult by viewModel.currentReadResult.collectAsState()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Patch") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = offset,
+                    onValueChange = { offset = it },
+                    label = { Text("Offset") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = readLength,
+                    onValueChange = { readLength = it.filter { c -> c.isDigit() } },
+                    label = { Text("Read Length (bytes)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                currentReadResult?.let { (hex, bytes) ->
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text(
+                                text = "Current bytes at offset (${bytes.size}B)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = formatHexDisplay(hex),
+                                fontFamily = FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                OutlinedTextField(
+                    value = replacement,
+                    onValueChange = { replacement = it },
+                    label = { Text("Replacement Bytes") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val readBytes = currentReadResult?.first ?: patch.originalBytes
+                val normalizedOriginal = readBytes.replace(" ", "").uppercase()
+                onSave(
+                    patch.copy(
+                        offset = offset,
+                        originalBytes = normalizedOriginal,
+                        replacementBytes = replacement,
+                        description = description
+                    )
+                )
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
