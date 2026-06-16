@@ -24,10 +24,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
-import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
@@ -45,13 +43,17 @@ fun SplashScreen(
     )
     val progress by animateLottieCompositionAsState(
         composition,
-        iterations = LottieConstants.IterateForever
+        iterations = 1
     )
 
     LaunchedEffect(Unit) {
         startAnimation = true
-        delay(3000)
-        onSplashComplete()
+    }
+
+    LaunchedEffect(progress) {
+        if (progress >= 1f && composition != null) {
+            onSplashComplete()
+        }
     }
 
     Box(
