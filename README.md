@@ -1,59 +1,68 @@
-# LibEditor
+# NeoLibEditor
 
-An Android ELF shared library editor with address patching and string editing capabilities. Built with Kotlin, Jetpack Compose, and a Rust backend for high-performance binary manipulation.
+A powerful ELF shared library editor for Android. Patch memory addresses and replace strings in `.so` files directly on your device.
 
 ## Features
 
 ### Address Patching
-- Read bytes at any offset in ELF files
-- Add multiple patches with offset, original bytes, and replacement bytes
-- Enable/disable patches individually
-- Apply all patches at once
-- Hex format validation and byte alignment checks
+- Read raw bytes at any offset in an ELF binary
+- Create multiple patches with offset, original bytes, and replacement bytes
+- Enable or disable individual patches before saving
+- Automatic 8-byte reads with confirmation for larger patches
+- Hex validation and byte-size mismatch detection
+- Live preview of original vs replacement bytes
 
 ### String Editor
-- Extract ASCII, UTF-8, and UTF-16 strings from libraries
-- Search and filter strings in real-time
-- Replace strings with strict size validation
-- Display string offset, encoding, and length
+- Extract ASCII, UTF-8, and UTF-16 strings from any loaded library
+- Search and filter strings in real time
+- Queue multiple string replacements with size validation
+- Shows offset, encoding type, and byte length for each string
 
-### Supported Architectures
-- ARM64 (aarch64)
-- ARMv7 (armeabi-v7a)
-- x86
-- x86_64
+### Library Info
+- View architecture (ARM64, ARMv7, x86, x86_64)
+- File size, section count, string count, and entry point
+- One-tap access from the editor toolbar
 
-## Architecture
+### General
+- Backup and revert — always safe to experiment
+- Patches and string edits are applied together in one pass
+- Material 3 design with dynamic color support
+- Multilingual interface (English, Arabic, Chinese, French, German, Japanese, Portuguese, Russian, Spanish)
+- Dark and light theme support
+- Custom output directory for patched files
 
-```
-┌─────────────────────────────────────┐
-│           Jetpack Compose UI        │
-├─────────────────────────────────────┤
-│            ViewModels               │
-├─────────────────────────────────────┤
-│        Repository Layer             │
-├─────────────────────────────────────┤
-│         JNI Bridge (C++)            │
-├─────────────────────────────────────┤
-│       Rust Backend (ELF parsing)    │
-└─────────────────────────────────────┘
-```
+## Supported Architectures
 
-- **UI Layer**: Material 3 Compose with two-tab design
-- **ViewModel**: MVVM pattern with StateFlow
-- **Repository**: Abstracts data operations
-- **JNI Bridge**: C++ layer connecting Kotlin to Rust
-- **Rust Backend**: ELF parsing, patching, string extraction using `goblin`
+| Architecture | ABI |
+|---|---|
+| ARM 64-bit | `arm64-v8a` |
+| ARM 32-bit | `armeabi-v7a` |
+| x86 64-bit | `x86_64` |
+| x86 32-bit | `x86` |
 
-## Build Instructions
+## How to Use
 
-### Prerequisites
+1. Open the app and tap **Pick .so File**
+2. Select an ELF shared library from your file manager
+3. Use the **Address Patching** tab to read and patch specific memory offsets
+4. Use the **String Editor** tab to find and replace strings
+5. Check your changes in the **Mods** tab
+6. Tap the save icon to apply all modifications
+7. Patched file is saved to your configured output directory
+
+## Download
+
+Grab the latest APK from [Releases](https://github.com/Neo-Mods1/LibEditor/releases).
+
+## Building
+
+### Requirements
 - Android Studio Hedgehog or later
 - JDK 17
 - Rust toolchain with `cargo-ndk`
 - Android NDK
 
-### Local Build
+### Build Steps
 ```bash
 # Install cargo-ndk
 cargo install cargo-ndk
@@ -67,57 +76,18 @@ cargo ndk -t arm64-v8a -t armeabi-v7a -t x86 -t x86_64 build --release
 
 # Copy to jniLibs
 mkdir -p ../app/src/main/jniLibs
-cp target/aarch64-linux-android/release/libeditor.so ../app/src/main/jniLibs/arm64-v8a/
-cp target/armv7-linux-androideabi/release/libeditor.so ../app/src/main/jniLibs/armeabi-v7a/
-cp target/i686-linux-android/release/libeditor.so ../app/src/main/jniLibs/x86/
-cp target/x86_64-linux-android/release/libeditor.so ../app/src/main/jniLibs/x86_64/
+cp target/aarch64-linux-android/release/libNeoLibEditor.so ../app/src/main/jniLibs/arm64-v8a/
+cp target/armv7-linux-androideabi/release/libNeoLibEditor.so ../app/src/main/jniLibs/armeabi-v7a/
+cp target/i686-linux-android/release/libNeoLibEditor.so ../app/src/main/jniLibs/x86/
+cp target/x86_64-linux-android/release/libNeoLibEditor.so ../app/src/main/jniLibs/x86_64/
 
 # Build APK
 cd ..
 ./gradlew assembleRelease
 ```
 
-### GitHub Actions
-The project includes CI/CD workflows that automatically:
-- Build Rust libraries for all architectures
-- Compile the Android APK
-- Upload build artifacts
-
-## JNI Flow
-
-1. Kotlin ViewModel calls `JniBridge` methods
-2. `JniBridge` invokes native C++ functions via JNI
-3. C++ forwards calls to Rust library
-4. Rust performs ELF parsing/patching operations
-5. Results serialized as JSON and returned through JNI
-
-## Project Structure
-
-```
-LibEditor/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/neomods/libeditor/
-│   │   │   ├── model/          # Data classes
-│   │   │   ├── repository/     # Repository pattern
-│   │   │   ├── service/        # JNI bridge
-│   │   │   ├── viewmodel/      # MVVM ViewModels
-│   │   │   └── ui/             # Compose UI
-│   │   ├── cpp/                # JNI C++ layer
-│   │   └── res/                # Android resources
-├── rust/
-│   └── src/
-│       ├── elf.rs              # ELF parsing
-│       ├── patch.rs            # Patch operations
-│       ├── string.rs           # String operations
-│       └── lib.rs              # JNI exports
-└── .github/workflows/          # CI/CD
-```
+The project also includes a GitHub Actions workflow that builds everything automatically on push.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for release history.
+MIT License — see [LICENSE](LICENSE) for details.
