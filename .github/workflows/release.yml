@@ -151,12 +151,12 @@ jobs:
 
           if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
 
-            TITLE="$TAG — Initial Release"
+            TITLE="$TAG - Initial Release"
 
             BODY=$(cat <<EOF
 ## NeoLibEditor Initial Release
 
-The first public release of **NeoLibEditor** — a modern Android ELF shared library editor designed for binary patching and string modification.
+The first public release of **NeoLibEditor** - a modern Android ELF shared library editor designed for binary patching and string modification.
 
 ### Main Features
 - Address patching for ELF shared libraries
@@ -197,7 +197,7 @@ EOF
 
           else
 
-            TITLE="$TAG — Update"
+            TITLE="$TAG - Update"
 
             BODY=$(cat <<EOF
 ## What's New
