@@ -305,7 +305,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                     return@launch
                 }
 
-                var currentFile = patchedFilePath
+                var currentFile = patchedFilePath ?: return@launch
                 var redirectCount = 0
                 for (edit in enabledEdits) {
                     val editResult = withContext(Dispatchers.IO) {
