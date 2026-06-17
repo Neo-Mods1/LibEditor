@@ -65,7 +65,7 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
         offset: Long,
         originalLength: Int,
         replacement: String
-    ): Result<String> {
+    ): Result<NativeStringResult> {
         val fileName = File(filePath).name
         val outputPath = File(getOutputDir(), fileName).absolutePath
         return jniBridge.replaceString(filePath, offset, originalLength, replacement, outputPath)

@@ -136,14 +136,14 @@ class JniBridge(private val context: Context) {
         originalLength: Int,
         replacement: String,
         outputPath: String
-    ): Result<String> = try {
+    ): Result<NativeStringResult> = try {
         val response = nativeReplaceString(filePath, offset, originalLength, replacement, outputPath)
         if (isErrorJson(response)) {
             Result.failure(Exception(getErrorMessage(response)))
         } else {
             val native = json.decodeFromString<NativeStringResult>(response)
             if (native.success) {
-                Result.success(native.outputPath)
+                Result.success(native)
             } else {
                 Result.failure(Exception(native.error))
             }

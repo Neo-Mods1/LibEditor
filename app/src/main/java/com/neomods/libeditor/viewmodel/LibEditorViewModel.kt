@@ -234,12 +234,6 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
 
-        val replacementBytes = replacement.toByteArray()
-        if (replacementBytes.size > selected.length) {
-            _errorMessage.value = "Replacement exceeds original size (${selected.length} bytes)"
-            return
-        }
-
         val entry = StringEditEntry(
             offset = selected.offset,
             originalLength = selected.length,
@@ -311,16 +305,27 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                     return@launch
                 }
 
+                var currentFile = patchedFilePath
+                var redirectCount = 0
                 for (edit in enabledEdits) {
                     val editResult = withContext(Dispatchers.IO) {
-                        repository.replaceString(patchedFilePath, edit.offset, edit.originalLength, edit.replacement)
+                        repository.replaceString(currentFile, edit.offset, edit.originalLength, edit.replacement)
                     }
-                    editResult.onSuccess { path -> outputPath = path }
+                    editResult.onSuccess { result ->
+                        outputPath = result.outputPath
+                        currentFile = result.outputPath
+                        if (result.redirected) {
+                            redirectCount++
+                        }
+                    }
                     editResult.onFailure { e ->
                         _errorMessage.value = "String edit error: ${e.message}"
                         _isLoading.value = false
                         return@launch
                     }
+                }
+                if (redirectCount > 0) {
+                    _successMessage.value = "Redirected $redirectCount string(s) to new memory locations"
                 }
             }
 

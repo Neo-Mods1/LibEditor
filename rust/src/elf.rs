@@ -1,4 +1,5 @@
 use goblin::elf::Elf;
+use goblin::elf::program_header::PT_LOAD;
 use goblin::Object;
 use std::fs;
 use std::path::Path;
@@ -24,23 +25,36 @@ pub struct ElfInfo {
     pub file_size: u64,
     pub section_count: usize,
     pub entry_point: u64,
-    pub is_64bit: bool,
 }
 
 pub struct ElfData {
     pub bytes: Vec<u8>,
     pub info: ElfInfo,
+    pub load_segments: Vec<LoadSegment>,
+    pub is_64bit: bool,
+}
+
+pub struct LoadSegment {
+    pub file_offset: u64,
+    pub virtual_addr: u64,
+    pub file_size: u64,
+    pub memory_size: u64,
 }
 
 impl ElfData {
     pub fn open(path: &Path) -> Result<Self, ElfError> {
         let bytes = fs::read(path)?;
-        let info = Self::parse_info(&bytes, path)?;
+        let (info, load_segments, is_64bit) = Self::parse_info(&bytes, path)?;
 
-        Ok(Self { bytes, info })
+        Ok(Self {
+            bytes,
+            info,
+            load_segments,
+            is_64bit,
+        })
     }
 
-    fn parse_info(bytes: &[u8], path: &Path) -> Result<ElfInfo, ElfError> {
+    fn parse_info(bytes: &[u8], path: &Path) -> Result<(ElfInfo, Vec<LoadSegment>, bool), ElfError> {
         match Object::parse(bytes)
             .map_err(|e| ElfError::Parse(e.to_string()))?
         {
@@ -51,14 +65,27 @@ impl ElfData {
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_default();
 
-                Ok(ElfInfo {
+                let load_segments: Vec<LoadSegment> = elf
+                    .program_headers
+                    .iter()
+                    .filter(|ph| ph.p_type == PT_LOAD)
+                    .map(|ph| LoadSegment {
+                        file_offset: ph.p_offset,
+                        virtual_addr: ph.p_vaddr,
+                        file_size: ph.p_filesz,
+                        memory_size: ph.p_memsz,
+                    })
+                    .collect();
+
+                let info = ElfInfo {
                     name,
                     architecture: arch,
                     file_size: bytes.len() as u64,
                     section_count: elf.section_headers.len(),
                     entry_point: elf.entry,
-                    is_64bit: elf.is_64,
-                })
+                };
+
+                Ok((info, load_segments, elf.is_64))
             }
             _ => Err(ElfError::Parse("Not an ELF file".to_string())),
         }
@@ -87,6 +114,106 @@ impl ElfData {
     pub fn save(&self, path: &Path) -> Result<(), ElfError> {
         fs::write(path, &self.bytes)?;
         Ok(())
+    }
+
+    /// Convert a file offset to its virtual address using load segments
+    pub fn offset_to_vaddr(&self, file_offset: u64) -> Option<u64> {
+        for seg in &self.load_segments {
+            if file_offset >= seg.file_offset
+                && file_offset < seg.file_offset + seg.file_size
+            {
+                let vaddr =
+                    seg.virtual_addr + (file_offset - seg.file_offset);
+                return Some(vaddr);
+            }
+        }
+        None
+    }
+
+    /// Convert a virtual address back to file offset
+    pub fn vaddr_to_offset(&self, vaddr: u64) -> Option<u64> {
+        for seg in &self.load_segments {
+            if vaddr >= seg.virtual_addr
+                && vaddr < seg.virtual_addr + seg.file_size
+            {
+                let offset =
+                    seg.file_offset + (vaddr - seg.virtual_addr);
+                return Some(offset);
+            }
+        }
+        None
+    }
+
+    /// Find a contiguous region of null bytes large enough to hold `size` bytes.
+    /// Searches within existing file bounds (inter-section padding).
+    pub fn find_free_space(&self, size: usize, alignment: usize) -> Option<u64> {
+        // Search for null byte gaps within the file
+        let mut run_start: Option<usize> = None;
+        let mut run_len: usize = 0;
+
+        for (i, &byte) in self.bytes.iter().enumerate() {
+            if byte == 0 {
+                if run_start.is_none() {
+                    run_start = Some(i);
+                    run_len = 0;
+                }
+                run_len += 1;
+
+                if run_len >= size {
+                    let start = run_start.unwrap();
+                    let aligned_start = if alignment > 1 {
+                        (start + alignment - 1) & !(alignment - 1)
+                    } else {
+                        start
+                    };
+                    let aligned_end = aligned_start + size;
+                    // Make sure the aligned region fits within this null run
+                    if aligned_end <= start + run_len {
+                        return Some(aligned_start as u64);
+                    }
+                }
+            } else {
+                run_start = None;
+                run_len = 0;
+            }
+        }
+
+        None
+    }
+
+    /// Find all file offsets where a pointer to `target_vaddr` is stored.
+    /// Scans for 4-byte little-endian pointer values.
+    pub fn find_pointer_refs(&self, target_vaddr: u64) -> Vec<u64> {
+        let mut refs = Vec::new();
+        let needle = (target_vaddr as u32).to_le_bytes();
+        let needle64 = target_vaddr.to_le_bytes();
+
+        // Scan for 4-byte pointers (32-bit ELF)
+        if !self.is_64bit {
+            for i in 0..self.bytes.len().saturating_sub(3) {
+                if self.bytes[i..i + 4] == needle {
+                    refs.push(i as u64);
+                }
+            }
+        } else {
+            // Scan for 8-byte pointers (64-bit ELF)
+            for i in 0..self.bytes.len().saturating_sub(7) {
+                if self.bytes[i..i + 8] == needle64 {
+                    refs.push(i as u64);
+                }
+            }
+            // Also scan for 4-byte truncated pointers (common in 32-bit compat)
+            for i in 0..self.bytes.len().saturating_sub(3) {
+                if self.bytes[i..i + 4] == needle {
+                    // Only add if not already found as 8-byte
+                    if !refs.contains(&(i as u64)) {
+                        refs.push(i as u64);
+                    }
+                }
+            }
+        }
+
+        refs
     }
 }
 

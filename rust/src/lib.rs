@@ -210,9 +210,17 @@ pub extern "C" fn Java_com_neomods_libeditor_service_JniBridge_nativeReplaceStri
             let mut replacer = StringReplacer::new(elf);
 
             match replacer.replace_string(offset as u64, original_length as usize, &repl) {
-                Ok(_) => match replacer.save(Path::new(&out)) {
+                Ok(redirect_info) => match replacer.save(Path::new(&out)) {
                     Ok(_) => {
-                        let json = serde_json::json!({ "success": true, "outputPath": out });
+                        let mut json = serde_json::json!({ "success": true, "outputPath": out });
+                        if let Some(info) = redirect_info {
+                            json["redirected"] = serde_json::json!(true);
+                            json["originalOffset"] = serde_json::json!(info.original_offset);
+                            json["newStringOffset"] = serde_json::json!(info.new_string_offset);
+                            json["pointersUpdated"] = serde_json::json!(info.pointers_updated);
+                        } else {
+                            json["redirected"] = serde_json::json!(false);
+                        }
                         to_jstring(&mut env, &json.to_string())
                     }
                     Err(e) => {

@@ -94,5 +94,9 @@ data class NativePatchResult(
 data class NativeStringResult(
     val success: Boolean = false,
     val outputPath: String = "",
-    val error: String = ""
+    val error: String = "",
+    val redirected: Boolean = false,
+    val originalOffset: Long = 0L,
+    val newStringOffset: Long = 0L,
+    val pointersUpdated: Int = 0
 )
