@@ -7,6 +7,7 @@ on:
         description: 'Release tag (e.g. v1.1.0). Leave empty for auto-increment'
         required: false
         type: string
+
       prerelease:
         description: 'Mark as pre-release'
         required: false
@@ -24,6 +25,7 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,6 +36,7 @@ jobs:
         id: latest
         run: |
           LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')
+
           if [ -z "$LATEST" ]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
           else
@@ -52,104 +55,187 @@ jobs:
             TAG="v1.0.0"
           else
             CURRENT="${{ steps.latest.outputs.tag }}"
-            NUM=$(echo "$CURRENT" | sed 's/[^0-9]//g')
-            NUM=$((NUM + 1))
-            TAG="v${NUM}"
+
+            VERSION=$(echo "$CURRENT" | sed 's/v//')
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+            PATCH=$((PATCH + 1))
+
+            TAG="v$MAJOR.$MINOR.$PATCH"
           fi
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Download APK artifact
         run: |
           ARTIFACT_NAME="${{ needs.build.outputs.artifact_name }}"
-          echo "Artifact name: $ARTIFACT_NAME"
 
           gh api "repos/{owner}/{repo}/actions/artifacts" \
             --jq ".artifacts[] | select(.name == \"$ARTIFACT_NAME\") | .id" \
             > /tmp/artifact_id.txt
 
           ARTIFACT_ID=$(cat /tmp/artifact_id.txt)
-          echo "Artifact ID: $ARTIFACT_ID"
 
-          gh api "repos/{owner}/{repo}/actions/artifacts/$ARTIFACT_ID/zip" > /tmp/apk.zip
+          gh api "repos/{owner}/{repo}/actions/artifacts/$ARTIFACT_ID/zip" \
+            > /tmp/apk.zip
+
           mkdir -p /tmp/apk
           unzip /tmp/apk.zip -d /tmp/apk
-          find /tmp/apk -name "*.apk"
+
+          APK_PATH=$(find /tmp/apk -name "*.apk" | head -1)
+
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: APK not found"
+            exit 1
+          fi
+
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get commits since last release
+      - name: Collect commits
         id: commits
         run: |
           if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" -20)
+            git log --pretty=format:"%s" -20 > commits.txt
           else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" "${{ steps.latest.outputs.tag }}"..HEAD)
+            git log --pretty=format:"%s" \
+              "${{ steps.latest.outputs.tag }}"..HEAD > commits.txt
           fi
 
-          if [ -z "$COMMITS" ]; then
-            COMMITS="- No changes"
-          fi
+          FEATURES=""
+          FIXES=""
+          IMPROVEMENTS=""
+          OTHER=""
 
-          echo "commits<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$COMMITS" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          while IFS= read -r line
+          do
+            LOWER=$(echo "$line" | tr '[:upper:]' '[:lower:]')
+
+            if [[ "$LOWER" == feat:* ]] || [[ "$LOWER" == feature:* ]]; then
+              FEATURES="${FEATURES}- ${line#*: }\n"
+
+            elif [[ "$LOWER" == fix:* ]] || [[ "$LOWER" == bug:* ]]; then
+              FIXES="${FIXES}- ${line#*: }\n"
+
+            elif [[ "$LOWER" == improve:* ]] || [[ "$LOWER" == refactor:* ]] || [[ "$LOWER" == perf:* ]]; then
+              IMPROVEMENTS="${IMPROVEMENTS}- ${line#*: }\n"
+
+            else
+              OTHER="${OTHER}- $line\n"
+            fi
+          done < commits.txt
+
+          {
+            echo "features<<EOF"
+            echo -e "$FEATURES"
+            echo "EOF"
+
+            echo "fixes<<EOF"
+            echo -e "$FIXES"
+            echo "EOF"
+
+            echo "improvements<<EOF"
+            echo -e "$IMPROVEMENTS"
+            echo "EOF"
+
+            echo "other<<EOF"
+            echo -e "$OTHER"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         id: notes
         run: |
-          EXISTS="${{ steps.latest.outputs.exists }}"
           TAG="${{ steps.tag.outputs.tag }}"
 
-          if [ "$EXISTS" = "false" ]; then
-            TITLE="$TAG — Initial Release"
-            BODY="## What's New
+          if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
 
-This is the first official release of **NeoLibEditor** — an ELF shared library editor for Android.
+            TITLE="$TAG — Initial Release"
+
+            BODY=$(cat <<EOF
+## NeoLibEditor Initial Release
+
+The first public release of **NeoLibEditor** — a modern Android ELF shared library editor designed for binary patching and string modification.
+
+### Main Features
+- Address patching for ELF shared libraries
+- String extraction and replacement
+- Multi-architecture support
+- Backup & restore system
+- Material 3 UI
+- Fast Rust-powered backend
+
+### Supported Architectures
+- ARM64
+- ARMv7
+- x86
+- x86_64
+
+### Requirements
+- Android 10+
+- API 29+
+
+---
+
+## Included Changes
 
 ### Features
-- **Address Patching** — Read and patch memory offsets in .so files
-- **String Editor** — Extract, search, and replace strings
-- **Multi-architecture** — ARM64, ARMv7, x86, x86_64 support
-- **Backup & Revert** — Safe experimentation with automatic backups
-- **Material 3 UI** — Modern design with dark/light theme support
+${{ steps.commits.outputs.features }}
 
-### Included Changes
-${{ steps.commits.outputs.commits }}
+### Improvements
+${{ steps.commits.outputs.improvements }}
+
+### Other Changes
+${{ steps.commits.outputs.other }}
 
 ---
 
-Download the APK below and install it on your Android device (API 29+)."
+Download the APK below to install NeoLibEditor.
+EOF
+)
+
           else
-            TITLE="$TAG — Feature Upgrades"
-            BODY="## What's Changed
 
-${{ steps.commits.outputs.commits }}
+            TITLE="$TAG — Update"
+
+            BODY=$(cat <<EOF
+## What's New
+
+### New Features
+${{ steps.commits.outputs.features }}
+
+### Fixes
+${{ steps.commits.outputs.fixes }}
+
+### Improvements
+${{ steps.commits.outputs.improvements }}
+
+### Other Changes
+${{ steps.commits.outputs.other }}
 
 ---
 
-### Upgrade
-Download and install the APK below to update your existing installation."
+Download the APK below to update NeoLibEditor.
+EOF
+)
+
           fi
 
           echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
           echo "body<<EOF" >> "$GITHUB_OUTPUT"
           echo "$BODY" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub release
+      - name: Create GitHub Release
         run: |
-          APK_PATH=$(find /tmp/apk -name "*.apk" | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "ERROR: No APK found!"
-            exit 1
-          fi
-          echo "APK: $APK_PATH"
-
           gh release create "${{ steps.tag.outputs.tag }}" \
             "$APK_PATH" \
             --title "${{ steps.notes.outputs.title }}" \
             --notes "${{ steps.notes.outputs.body }}" \
             ${{ inputs.prerelease && '--prerelease' || '' }} \
+            --latest \
             --target "${{ github.sha }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
