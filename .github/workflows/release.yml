@@ -68,16 +68,19 @@ jobs:
 
       - name: Download APK artifact
         run: |
-          ARTIFACT_NAME="${{ needs.build.outputs.artifact_name }}"
+          ARTIFACT_NAME="LibEditor-v${{ needs.build.outputs.run_number || github.run_number }}"
 
-          gh api "repos/{owner}/{repo}/actions/artifacts" \
-            --jq ".artifacts[] | select(.name == \"$ARTIFACT_NAME\") | .id" \
-            > /tmp/artifact_id.txt
+          ARTIFACT_ID=$(gh api "repos/{owner}/{repo}/actions/artifacts" \
+            --jq ".artifacts | sort_by(.created_at) | reverse | .[0].id")
 
-          ARTIFACT_ID=$(cat /tmp/artifact_id.txt)
+          if [ -z "$ARTIFACT_ID" ] || [ "$ARTIFACT_ID" = "null" ]; then
+            echo "No artifacts found, trying latest..."
+            ARTIFACT_ID=$(gh api "repos/{owner}/{repo}/actions/artifacts?per_page=1" \
+              --jq ".artifacts[0].id")
+          fi
 
-          gh api "repos/{owner}/{repo}/actions/artifacts/$ARTIFACT_ID/zip" \
-            > /tmp/apk.zip
+          echo "Downloading artifact ID: $ARTIFACT_ID"
+          gh api "repos/{owner}/{repo}/actions/artifacts/$ARTIFACT_ID/zip" > /tmp/apk.zip
 
           mkdir -p /tmp/apk
           unzip /tmp/apk.zip -d /tmp/apk
@@ -85,11 +88,13 @@ jobs:
           APK_PATH=$(find /tmp/apk -name "*.apk" | head -1)
 
           if [ -z "$APK_PATH" ]; then
-            echo "ERROR: APK not found"
+            echo "ERROR: APK not found in artifact"
+            find /tmp/apk -type f
             exit 1
           fi
 
           echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+          echo "Found APK: $APK_PATH"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
