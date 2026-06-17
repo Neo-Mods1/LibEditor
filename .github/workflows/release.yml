@@ -18,8 +18,12 @@ permissions:
   actions: read
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
   release:
     name: Create Release
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,13 +34,13 @@ jobs:
       - name: Get latest release
         id: latest
         run: |
-          LATEST=$(gh release list --limit 1 --json tagName,isLatest --jq '.[0].tagName // empty')
-          echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
+          LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')
           if [ -z "$LATEST" ]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No existing release found — this will be the first release"
+            echo "No existing release found"
           else
             echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
             echo "Latest release: $LATEST"
           fi
         env:
@@ -58,89 +62,41 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Release tag: $TAG"
 
-      - name: Trigger build workflow
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const workflow = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build.yml',
-              ref: context.ref
-            });
-            const runId = workflow.data.id;
-            console.log(`Build triggered, run ID: ${runId}`);
-
-            // Wait for the build to complete
-            let status = 'in_progress';
-            let attempts = 0;
-            const maxAttempts = 60;
-
-            while (status !== 'completed' && attempts < maxAttempts) {
-              await new Promise(r => setTimeout(r, 30000));
-              attempts++;
-
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'build.yml',
-                per_page: 1,
-                created: `>=${new Date().toISOString().slice(0, 19)}Z`
-              });
-
-              const run = runs.data.workflow_runs[0];
-              if (run) {
-                status = run.status;
-                console.log(`Build status: ${status} (attempt ${attempts}/${maxAttempts})`);
-
-                if (status === 'completed' && run.conclusion !== 'success') {
-                  core.setFailed(`Build failed with conclusion: ${run.conclusion}`);
-                  return;
-                }
-              }
-            }
-
-            if (status !== 'completed') {
-              core.setFailed('Build timed out after 30 minutes');
-              return;
-            }
-            console.log('Build completed successfully');
-
       - name: Download APK artifact
         run: |
-          gh run list --workflow=build.yml --limit=1 --json databaseId --jq '.[0].databaseId' > /tmp/run_id.txt
-          RUN_ID=$(cat /tmp/run_id.txt)
-          echo "Downloading artifact from run $RUN_ID"
+          ARTIFACT_NAME="${{ needs.build.outputs.artifact-name }}"
+          echo "Downloading artifact: $ARTIFACT_NAME"
 
-          gh api "repos/{owner}/{repo}/actions/runs/$RUN_ID/artifacts" \
-            --jq '.artifacts[0].id' > /tmp/artifact_id.txt
+          gh api "repos/{owner}/{repo}/actions/artifacts" \
+            --jq ".artifacts[] | select(.name == \"$ARTIFACT_NAME\") | .id" \
+            > /tmp/artifact_id.txt
+
           ARTIFACT_ID=$(cat /tmp/artifact_id.txt)
+          echo "Artifact ID: $ARTIFACT_ID"
 
           gh api "repos/{owner}/{repo}/actions/artifacts/$ARTIFACT_ID/zip" > /tmp/apk.zip
+          mkdir -p /tmp/apk
           unzip /tmp/apk.zip -d /tmp/apk
-          ls -la /tmp/apk/
+          echo "Downloaded files:"
+          find /tmp/apk -name "*.apk"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get commits since last release
         id: commits
         run: |
-          TAG="${{ steps.latest.outputs.tag }}"
           if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" -20)
           else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" "$TAG"..HEAD)
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${{ steps.latest.outputs.tag }}"..HEAD)
           fi
 
           if [ -z "$COMMITS" ]; then
-            COMMITS="- Initial release"
+            COMMITS="- No changes"
           fi
 
-          # Write to file to preserve newlines
-          echo "$COMMITS" > /tmp/commits.txt
           echo "commits<<EOF" >> "$GITHUB_OUTPUT"
-          cat /tmp/commits.txt >> "$GITHUB_OUTPUT"
+          echo "$COMMITS" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
@@ -189,10 +145,11 @@ Download and install the APK below to update your existing installation."
         run: |
           APK_PATH=$(find /tmp/apk -name "*.apk" | head -1)
           if [ -z "$APK_PATH" ]; then
-            echo "No APK found!"
+            echo "ERROR: No APK found!"
             exit 1
           fi
           echo "APK: $APK_PATH"
+          ls -lh "$APK_PATH"
 
           gh release create "${{ steps.tag.outputs.tag }}" \
             "$APK_PATH" \
@@ -200,5 +157,7 @@ Download and install the APK below to update your existing installation."
             --notes "${{ steps.notes.outputs.body }}" \
             ${{ inputs.prerelease && '--prerelease' || '' }} \
             --target "${{ github.sha }}"
+
+          echo "Release ${{ steps.tag.outputs.tag }} created successfully!"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
