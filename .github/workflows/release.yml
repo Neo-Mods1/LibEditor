@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   build:
@@ -37,11 +36,9 @@ jobs:
           LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')
           if [ -z "$LATEST" ]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No existing release found"
           else
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
-            echo "Latest release: $LATEST"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,12 +57,11 @@ jobs:
             TAG="v${NUM}"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Release tag: $TAG"
 
       - name: Download APK artifact
         run: |
-          ARTIFACT_NAME="${{ needs.build.outputs.artifact-name }}"
-          echo "Downloading artifact: $ARTIFACT_NAME"
+          ARTIFACT_NAME="${{ needs.build.outputs.artifact_name }}"
+          echo "Artifact name: $ARTIFACT_NAME"
 
           gh api "repos/{owner}/{repo}/actions/artifacts" \
             --jq ".artifacts[] | select(.name == \"$ARTIFACT_NAME\") | .id" \
@@ -77,7 +73,6 @@ jobs:
           gh api "repos/{owner}/{repo}/actions/artifacts/$ARTIFACT_ID/zip" > /tmp/apk.zip
           mkdir -p /tmp/apk
           unzip /tmp/apk.zip -d /tmp/apk
-          echo "Downloaded files:"
           find /tmp/apk -name "*.apk"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -149,7 +144,6 @@ Download and install the APK below to update your existing installation."
             exit 1
           fi
           echo "APK: $APK_PATH"
-          ls -lh "$APK_PATH"
 
           gh release create "${{ steps.tag.outputs.tag }}" \
             "$APK_PATH" \
@@ -157,7 +151,5 @@ Download and install the APK below to update your existing installation."
             --notes "${{ steps.notes.outputs.body }}" \
             ${{ inputs.prerelease && '--prerelease' || '' }} \
             --target "${{ github.sha }}"
-
-          echo "Release ${{ steps.tag.outputs.tag }} created successfully!"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
