@@ -440,9 +440,9 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             .uppercase()
 
         if (cleaned.isEmpty()) return null
-        if (cleaned.length % 2 != 0) return null
         if (!cleaned.all { it in '0'..'9' || it in 'A'..'F' }) return null
 
-        return cleaned
+        val padded = if (cleaned.length % 2 != 0) "0$cleaned" else cleaned
+        return padded
     }
 }
