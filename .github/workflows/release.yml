@@ -68,15 +68,12 @@ jobs:
 
       - name: Download APK artifact
         run: |
-          ARTIFACT_NAME="LibEditor-v${{ needs.build.outputs.run_number || github.run_number }}"
-
           ARTIFACT_ID=$(gh api "repos/{owner}/{repo}/actions/artifacts" \
             --jq ".artifacts | sort_by(.created_at) | reverse | .[0].id")
 
           if [ -z "$ARTIFACT_ID" ] || [ "$ARTIFACT_ID" = "null" ]; then
-            echo "No artifacts found, trying latest..."
-            ARTIFACT_ID=$(gh api "repos/{owner}/{repo}/actions/artifacts?per_page=1" \
-              --jq ".artifacts[0].id")
+            echo "ERROR: No artifacts found"
+            exit 1
           fi
 
           echo "Downloading artifact ID: $ARTIFACT_ID"
@@ -89,7 +86,6 @@ jobs:
 
           if [ -z "$APK_PATH" ]; then
             echo "ERROR: APK not found in artifact"
-            find /tmp/apk -type f
             exit 1
           fi
 
@@ -98,129 +94,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Collect commits
-        id: commits
-        run: |
-          if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
-            git log --pretty=format:"%s" -20 > commits.txt
-          else
-            git log --pretty=format:"%s" \
-              "${{ steps.latest.outputs.tag }}"..HEAD > commits.txt
-          fi
-
-          FEATURES=""
-          FIXES=""
-          IMPROVEMENTS=""
-          OTHER=""
-
-          while IFS= read -r line
-          do
-            LOWER=$(echo "$line" | tr '[:upper:]' '[:lower:]')
-
-            if [[ "$LOWER" == feat:* ]] || [[ "$LOWER" == feature:* ]]; then
-              FEATURES="${FEATURES}- ${line#*: }\n"
-
-            elif [[ "$LOWER" == fix:* ]] || [[ "$LOWER" == bug:* ]]; then
-              FIXES="${FIXES}- ${line#*: }\n"
-
-            elif [[ "$LOWER" == improve:* ]] || [[ "$LOWER" == refactor:* ]] || [[ "$LOWER" == perf:* ]]; then
-              IMPROVEMENTS="${IMPROVEMENTS}- ${line#*: }\n"
-
-            else
-              OTHER="${OTHER}- $line\n"
-            fi
-          done < commits.txt
-
-          {
-            echo "features<<EOF"
-            echo -e "$FEATURES"
-            echo "EOF"
-
-            echo "fixes<<EOF"
-            echo -e "$FIXES"
-            echo "EOF"
-
-            echo "improvements<<EOF"
-            echo -e "$IMPROVEMENTS"
-            echo "EOF"
-
-            echo "other<<EOF"
-            echo -e "$OTHER"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Generate release notes
-        id: notes
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          FEAT="${{ steps.commits.outputs.features }}"
-          FIX="${{ steps.commits.outputs.fixes }}"
-          IMPROVE="${{ steps.commits.outputs.improvements }}"
-          OTHER="${{ steps.commits.outputs.other }}"
-
-          if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
-            TITLE="$TAG - Initial Release"
-            {
-              echo "body<<ENDOFBODY"
-              echo "## NeoLibEditor Initial Release"
-              echo ""
-              echo "The first public release of NeoLibEditor - a modern Android ELF shared library editor designed for binary patching and string modification."
-              echo ""
-              echo "### Main Features"
-              echo "- Address patching for ELF shared libraries"
-              echo "- String extraction and replacement"
-              echo "- Multi-architecture support"
-              echo "- Backup and restore system"
-              echo "- Material 3 UI"
-              echo "- Fast Rust-powered backend"
-              echo ""
-              echo "### Supported Architectures"
-              echo "- ARM64"
-              echo "- ARMv7"
-              echo "- x86"
-              echo "- x86_64"
-              echo ""
-              echo "### Requirements"
-              echo "- Android 10+"
-              echo "- API 29+"
-              echo ""
-              echo "---"
-              echo ""
-              echo "## Included Changes"
-              echo ""
-              if [ -n "$FEAT" ]; then echo "### Features"; echo "$FEAT"; echo ""; fi
-              if [ -n "$IMPROVE" ]; then echo "### Improvements"; echo "$IMPROVE"; echo ""; fi
-              if [ -n "$OTHER" ]; then echo "### Other Changes"; echo "$OTHER"; echo ""; fi
-              echo "---"
-              echo ""
-              echo "Download the APK below to install NeoLibEditor."
-              echo "ENDOFBODY"
-            } >> "$GITHUB_OUTPUT"
-          else
-            TITLE="$TAG - Update"
-            {
-              echo "body<<ENDOFBODY"
-              echo "## What's New"
-              echo ""
-              if [ -n "$FEAT" ]; then echo "### New Features"; echo "$FEAT"; echo ""; fi
-              if [ -n "$FIX" ]; then echo "### Fixes"; echo "$FIX"; echo ""; fi
-              if [ -n "$IMPROVE" ]; then echo "### Improvements"; echo "$IMPROVE"; echo ""; fi
-              if [ -n "$OTHER" ]; then echo "### Other Changes"; echo "$OTHER"; echo ""; fi
-              echo "---"
-              echo ""
-              echo "Download the APK below to update NeoLibEditor."
-              echo "ENDOFBODY"
-            } >> "$GITHUB_OUTPUT"
-          fi
-
-          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
-
       - name: Create GitHub Release
         run: |
+          if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
+            TITLE="${{ steps.tag.outputs.tag }} - Initial Release"
+          else
+            TITLE="${{ steps.tag.outputs.tag }} - Update"
+          fi
+
           gh release create "${{ steps.tag.outputs.tag }}" \
             "$APK_PATH" \
-            --title "${{ steps.notes.outputs.title }}" \
-            --notes "${{ steps.notes.outputs.body }}" \
+            --title "$TITLE" \
+            --generate-notes \
             ${{ inputs.prerelease && '--prerelease' || '' }} \
             --latest \
             --target "${{ github.sha }}"
