@@ -153,85 +153,67 @@ jobs:
         id: notes
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
+          FEAT="${{ steps.commits.outputs.features }}"
+          FIX="${{ steps.commits.outputs.fixes }}"
+          IMPROVE="${{ steps.commits.outputs.improvements }}"
+          OTHER="${{ steps.commits.outputs.other }}"
 
           if [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
-
             TITLE="$TAG - Initial Release"
-
-            BODY=$(cat <<EOF
-## NeoLibEditor Initial Release
-
-The first public release of **NeoLibEditor** - a modern Android ELF shared library editor designed for binary patching and string modification.
-
-### Main Features
-- Address patching for ELF shared libraries
-- String extraction and replacement
-- Multi-architecture support
-- Backup & restore system
-- Material 3 UI
-- Fast Rust-powered backend
-
-### Supported Architectures
-- ARM64
-- ARMv7
-- x86
-- x86_64
-
-### Requirements
-- Android 10+
-- API 29+
-
----
-
-## Included Changes
-
-### Features
-${{ steps.commits.outputs.features }}
-
-### Improvements
-${{ steps.commits.outputs.improvements }}
-
-### Other Changes
-${{ steps.commits.outputs.other }}
-
----
-
-Download the APK below to install NeoLibEditor.
-EOF
-)
-
+            {
+              echo "body<<ENDOFBODY"
+              echo "## NeoLibEditor Initial Release"
+              echo ""
+              echo "The first public release of NeoLibEditor - a modern Android ELF shared library editor designed for binary patching and string modification."
+              echo ""
+              echo "### Main Features"
+              echo "- Address patching for ELF shared libraries"
+              echo "- String extraction and replacement"
+              echo "- Multi-architecture support"
+              echo "- Backup and restore system"
+              echo "- Material 3 UI"
+              echo "- Fast Rust-powered backend"
+              echo ""
+              echo "### Supported Architectures"
+              echo "- ARM64"
+              echo "- ARMv7"
+              echo "- x86"
+              echo "- x86_64"
+              echo ""
+              echo "### Requirements"
+              echo "- Android 10+"
+              echo "- API 29+"
+              echo ""
+              echo "---"
+              echo ""
+              echo "## Included Changes"
+              echo ""
+              if [ -n "$FEAT" ]; then echo "### Features"; echo "$FEAT"; echo ""; fi
+              if [ -n "$IMPROVE" ]; then echo "### Improvements"; echo "$IMPROVE"; echo ""; fi
+              if [ -n "$OTHER" ]; then echo "### Other Changes"; echo "$OTHER"; echo ""; fi
+              echo "---"
+              echo ""
+              echo "Download the APK below to install NeoLibEditor."
+              echo "ENDOFBODY"
+            } >> "$GITHUB_OUTPUT"
           else
-
             TITLE="$TAG - Update"
-
-            BODY=$(cat <<EOF
-## What's New
-
-### New Features
-${{ steps.commits.outputs.features }}
-
-### Fixes
-${{ steps.commits.outputs.fixes }}
-
-### Improvements
-${{ steps.commits.outputs.improvements }}
-
-### Other Changes
-${{ steps.commits.outputs.other }}
-
----
-
-Download the APK below to update NeoLibEditor.
-EOF
-)
-
+            {
+              echo "body<<ENDOFBODY"
+              echo "## What's New"
+              echo ""
+              if [ -n "$FEAT" ]; then echo "### New Features"; echo "$FEAT"; echo ""; fi
+              if [ -n "$FIX" ]; then echo "### Fixes"; echo "$FIX"; echo ""; fi
+              if [ -n "$IMPROVE" ]; then echo "### Improvements"; echo "$IMPROVE"; echo ""; fi
+              if [ -n "$OTHER" ]; then echo "### Other Changes"; echo "$OTHER"; echo ""; fi
+              echo "---"
+              echo ""
+              echo "Download the APK below to update NeoLibEditor."
+              echo "ENDOFBODY"
+            } >> "$GITHUB_OUTPUT"
           fi
 
           echo "title=$TITLE" >> "$GITHUB_OUTPUT"
-
-          echo "body<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$BODY" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         run: |
