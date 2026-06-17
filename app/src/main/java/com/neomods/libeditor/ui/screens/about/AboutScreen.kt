@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.neomods.libeditor.BuildConfig
 import com.neomods.libeditor.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,8 +101,8 @@ fun AboutScreen(
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
-                            Text(
-                                text = "v1.0.0",
+                        Text(
+                            text = "v${BuildConfig.VERSION_NAME}",
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,

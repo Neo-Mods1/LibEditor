@@ -248,7 +248,6 @@ fun ReplaceStringDialog(
     onReplace: (String) -> Unit
 ) {
     var replacement by remember { mutableStateOf("") }
-    var hasExceededSize by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -301,21 +300,18 @@ fun ReplaceStringDialog(
 
                 OutlinedTextField(
                     value = replacement,
-                    onValueChange = {
-                        replacement = it
-                        hasExceededSize = it.toByteArray().size > string.length
-                    },
+                    onValueChange = { replacement = it },
                     label = { Text("Replacement") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = hasExceededSize,
                     supportingText = {
-                        if (hasExceededSize) {
+                        val newLen = replacement.toByteArray().size
+                        if (newLen > string.length) {
                             Text(
-                                text = "Exceeds original size (${string.length} bytes)",
-                                color = MaterialTheme.colorScheme.error
+                                text = "Longer string - will redirect to free space",
+                                color = MaterialTheme.colorScheme.tertiary
                             )
                         } else {
-                            Text("${replacement.toByteArray().size}/${string.length} bytes")
+                            Text("${newLen}/${string.length} bytes")
                         }
                     },
                     shape = RoundedCornerShape(12.dp)
@@ -325,7 +321,7 @@ fun ReplaceStringDialog(
         confirmButton = {
             TextButton(
                 onClick = { onReplace(replacement) },
-                enabled = replacement.isNotBlank() && !hasExceededSize
+                enabled = replacement.isNotBlank()
             ) {
                 Text("Queue")
             }
