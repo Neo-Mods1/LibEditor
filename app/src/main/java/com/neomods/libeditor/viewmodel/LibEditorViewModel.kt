@@ -464,8 +464,17 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
             return null
         }
         return try {
-            val json = kotlinx.serialization.json.Json { prettyPrint = true }
-            json.encodeToString(kotlinx.serialization.builtins.ListSerializer(StringEditEntry.serializer()), enabledEdits)
+            val jsonArray = org.json.JSONArray()
+            for (edit in enabledEdits) {
+                val obj = org.json.JSONObject()
+                obj.put("offset", edit.offset)
+                obj.put("originalLength", edit.originalLength)
+                obj.put("replacement", edit.replacement)
+                obj.put("originalValue", edit.originalValue)
+                obj.put("enabled", edit.enabled)
+                jsonArray.put(obj)
+            }
+            jsonArray.toString(2)
         } catch (e: Exception) {
             _errorMessage.value = "Export failed: ${e.message}"
             null
