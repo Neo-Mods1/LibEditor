@@ -12,8 +12,19 @@ use std::path::Path;
 use string::StringReplacer;
 
 fn to_jstring(env: &mut JNIEnv, s: &str) -> jstring {
-    env.new_string(s)
-        .expect("Failed to create Java string")
+    // Ensure the string is valid UTF-8 before sending to Java
+    let safe_string = if s.is_empty() {
+        "".to_string()
+    } else {
+        // Replace any invalid UTF-8 sequences with replacement character
+        s.chars().map(|c| c).collect::<String>()
+    };
+    env.new_string(&safe_string)
+        .unwrap_or_else(|_| {
+            // Fallback: create a simple error JSON if string creation fails
+            env.new_string(r#"{"success":false,"error":"Internal encoding error"}"#)
+                .expect("Failed to create fallback string")
+        })
         .into_raw()
 }
 
@@ -190,20 +201,26 @@ pub extern "C" fn Java_com_neomods_libeditor_service_JniBridge_nativeReplaceStri
     replacement: JString,
     output_path: JString,
 ) -> jstring {
-    let path: String = env
-        .get_string(&file_path)
-        .expect("Failed to get path")
-        .into();
+    let path: String = match env.get_string(&file_path) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            return to_jstring(&mut env, r#"{"success":false,"error":"Invalid file path"}"#);
+        }
+    };
 
-    let repl: String = env
-        .get_string(&replacement)
-        .expect("Failed to get replacement")
-        .into();
+    let repl: String = match env.get_string(&replacement) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            return to_jstring(&mut env, r#"{"success":false,"error":"Invalid replacement string - contains invalid characters"}"#);
+        }
+    };
 
-    let out: String = env
-        .get_string(&output_path)
-        .expect("Failed to get output path")
-        .into();
+    let out: String = match env.get_string(&output_path) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            return to_jstring(&mut env, r#"{"success":false,"error":"Invalid output path"}"#);
+        }
+    };
 
     match ElfData::open(Path::new(&path)) {
         Ok(elf) => {
@@ -224,18 +241,18 @@ pub extern "C" fn Java_com_neomods_libeditor_service_JniBridge_nativeReplaceStri
                         to_jstring(&mut env, &json.to_string())
                     }
                     Err(e) => {
-                        let json = serde_json::json!({ "success": false, "error": e });
+                        let json = serde_json::json!({ "success": false, "error": format!("Save failed: {}", e) });
                         to_jstring(&mut env, &json.to_string())
                     }
                 },
                 Err(e) => {
-                    let json = serde_json::json!({ "success": false, "error": e });
+                    let json = serde_json::json!({ "success": false, "error": format!("String edit failed: {}", e) });
                     to_jstring(&mut env, &json.to_string())
                 }
             }
         }
         Err(e) => {
-            let json = serde_json::json!({ "success": false, "error": e.to_string() });
+            let json = serde_json::json!({ "success": false, "error": format!("Failed to open library: {}", e) });
             to_jstring(&mut env, &json.to_string())
         }
     }

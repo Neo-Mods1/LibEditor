@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-07-08
+
+### Added
+- Hex Viewer tab for viewing raw binary data
+- Import/Export patches as JSON files
+- String replacement validation with length warnings
+- Improved error messages with detailed context
+
+### Fixed
+- Invalid UTF-8 error when replacing strings (error code 115)
+- Better error handling for JNI string conversion
+- Graceful fallback for invalid replacement strings
+
+### Changed
+- Updated to version 3.0.0
+- Improved string editor with redirect information display
+
 ## [0.1.0] - 2026-06-11
 
 ### Added

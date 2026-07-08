@@ -10,20 +10,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.neomods.libeditor.R
 import com.neomods.libeditor.model.PatchEntry
 import com.neomods.libeditor.viewmodel.LibEditorViewModel
 import com.neomods.libeditor.viewmodel.StringEditEntry
+import java.io.File
 
 @Composable
 fun ModificationsTab(viewModel: LibEditorViewModel) {
     val patches by viewModel.patches.collectAsState()
     val stringEdits by viewModel.stringEdits.collectAsState()
+    val context = LocalContext.current
 
     val totalItems = patches.size + stringEdits.size
+
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importJson by remember { mutableStateOf("") }
 
     LazyColumn(
         modifier = Modifier
@@ -39,7 +47,7 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Queued Modifications",
+                    text = stringResource(R.string.queued_modifications),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -55,6 +63,49 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
+                    }
+                }
+            }
+        }
+
+        if (totalItems > 0) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val json = viewModel.exportPatches()
+                            if (json != null) {
+                                try {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "application/json"
+                                        putExtra(android.content.Intent.EXTRA_TEXT, json)
+                                        putExtra(android.content.Intent.EXTRA_SUBJECT, "LibEditor Patches")
+                                    }
+                                    context.startActivity(android.content.Intent.createChooser(intent, "Export Patches"))
+                                } catch (e: Exception) {
+                                    // Fallback
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.export))
+                    }
+
+                    OutlinedButton(
+                        onClick = { showImportDialog = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.import_patches))
                     }
                 }
             }
@@ -80,13 +131,13 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "No modifications yet",
+                            text = stringResource(R.string.no_modifications),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Add patches or queue string edits to see them here",
+                            text = stringResource(R.string.no_modifications_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -114,7 +165,7 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
                         )
                     }
                     Text(
-                        text = "Patches",
+                        text = stringResource(R.string.patches),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -151,7 +202,7 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
                         )
                     }
                     Text(
-                        text = "String Edits",
+                        text = stringResource(R.string.string_edits),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -178,10 +229,54 @@ fun ModificationsTab(viewModel: LibEditorViewModel) {
                 ) {
                     Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Clear All")
+                    Text(stringResource(R.string.clear_all))
                 }
             }
         }
+    }
+
+    if (showImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text(stringResource(R.string.import_patches_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.import_patches_desc),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = importJson,
+                        onValueChange = { importJson = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 150.dp),
+                        placeholder = { Text("[{\"offset\":\"0x...\",...}]") },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (importJson.isNotBlank()) {
+                            viewModel.importPatches(importJson)
+                            importJson = ""
+                            showImportDialog = false
+                        }
+                    },
+                    enabled = importJson.isNotBlank()
+                ) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 

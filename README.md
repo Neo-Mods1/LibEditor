@@ -17,11 +17,22 @@ A powerful ELF shared library editor for Android. Patch memory addresses and rep
 - Search and filter strings in real time
 - Queue multiple string replacements with size validation
 - Shows offset, encoding type, and byte length for each string
+- Automatic pointer redirection for longer strings
+
+### Hex Viewer
+- View raw binary data at any offset
+- Hex and ASCII representation
+- Configurable byte count (up to 4096 bytes)
 
 ### Library Info
 - View architecture (ARM64, ARMv7, x86, x86_64)
 - File size, section count, string count, and entry point
 - One-tap access from the editor toolbar
+
+### Import/Export
+- Export patches as JSON files
+- Import patch configurations from JSON
+- Share patches with other users
 
 ### General
 - Backup and revert — always safe to experiment
@@ -46,9 +57,10 @@ A powerful ELF shared library editor for Android. Patch memory addresses and rep
 2. Select an ELF shared library from your file manager
 3. Use the **Address Patching** tab to read and patch specific memory offsets
 4. Use the **String Editor** tab to find and replace strings
-5. Check your changes in the **Mods** tab
-6. Tap the save icon to apply all modifications
-7. Patched file is saved to your configured output directory
+5. Use the **Hex** tab to view raw binary data
+6. Check your changes in the **Mods** tab
+7. Tap the save icon to apply all modifications
+8. Patched file is saved to your configured output directory
 
 ## Download
 

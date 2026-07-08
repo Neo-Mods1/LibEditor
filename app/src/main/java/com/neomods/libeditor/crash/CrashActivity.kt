@@ -1,152 +1,84 @@
 package com.neomods.libeditor.crash
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Process
-import android.view.Gravity
-import android.view.View
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.ScrollView
-import android.widget.TextView
-import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.neomods.libeditor.ui.theme.LibEditorTheme
 
-class CrashActivity : Activity() {
-
-    private lateinit var logTextView: TextView
-    private lateinit var scrollView: ScrollView
-    private var fullLog: String = ""
+class CrashActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_CRASH_LOG = "crash_log"
         const val EXTRA_CRASH_MESSAGE = "crash_message"
+        const val EXTRA_EXCEPTION_TYPE = "exception_type"
+        const val EXTRA_STACKTRACE = "stacktrace"
+        const val EXTRA_THREAD = "crash_thread"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
-        window.decorView.setBackgroundColor(Color.parseColor("#1A1A2E"))
-        window.statusBarColor = Color.parseColor("#1A1A2E")
-        window.navigationBarColor = Color.parseColor("#1A1A2E")
+        val crashLog = intent.getStringExtra(EXTRA_CRASH_LOG) ?: "No crash log available"
+        val crashMessage = intent.getStringExtra(EXTRA_CRASH_MESSAGE) ?: "Unknown error occurred"
+        val exceptionType = intent.getStringExtra(EXTRA_EXCEPTION_TYPE) ?: extractExceptionType(crashLog)
+        val stacktrace = intent.getStringExtra(EXTRA_STACKTRACE) ?: extractStacktrace(crashLog)
+        val crashThread = intent.getStringExtra(EXTRA_THREAD) ?: "main"
 
-        val rootLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(48), dp(24), dp(24))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT
-            )
+        setContent {
+            LibEditorTheme(themeMode = com.neomods.libeditor.domain.ThemeMode.DARK) {
+                CrashScreen(
+                    crashLog = crashLog,
+                    crashMessage = crashMessage,
+                    exceptionType = exceptionType,
+                    stacktrace = stacktrace,
+                    crashThread = crashThread,
+                    onRestart = { restartApp() }
+                )
+            }
         }
-
-        val titleText = TextView(this).apply {
-            text = "Crash Report"
-            setTextColor(Color.parseColor("#FF6B6B"))
-            textSize = 28f
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, dp(8))
-        }
-        rootLayout.addView(titleText)
-
-        val messageText = TextView(this).apply {
-            text = intent.getStringExtra(EXTRA_CRASH_MESSAGE) ?: "Unknown error occurred"
-            setTextColor(Color.parseColor("#A0A0B0"))
-            textSize = 14f
-            setPadding(0, 0, 0, dp(16))
-            setLineSpacing(0f, 1.2f)
-        }
-        rootLayout.addView(messageText)
-
-        val loadingText = TextView(this).apply {
-            text = "Streaming logs..."
-            setTextColor(Color.parseColor("#FFB347"))
-            textSize = 12f
-            setPadding(0, 0, 0, dp(8))
-            visibility = View.VISIBLE
-        }
-        rootLayout.addView(loadingText)
-
-        val progressBar = ProgressBar(this).apply {
-            isIndeterminate = true
-            setPadding(0, 0, 0, dp(16))
-            visibility = View.VISIBLE
-        }
-        rootLayout.addView(progressBar)
-
-        scrollView = ScrollView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            setBackgroundColor(Color.parseColor("#0F0F23"))
-            isHorizontalScrollBarEnabled = true
-        }
-
-        logTextView = TextView(this).apply {
-            setTextColor(Color.parseColor("#00FF41"))
-            textSize = 11f
-            typeface = Typeface.MONOSPACE
-            setLineSpacing(0f, 1.3f)
-            setTextIsSelectable(true)
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-        }
-        scrollView.addView(logTextView)
-        rootLayout.addView(scrollView)
-
-        val buttonLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(16), 0, 0)
-            gravity = Gravity.CENTER
-        }
-
-        val copyButton = Button(this).apply {
-            text = "Copy Log"
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#4ECDC4"))
-            setPadding(dp(24), dp(12), dp(24), dp(12))
-            setOnClickListener { copyLogToClipboard() }
-            layoutParams = LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-            ).apply { marginEnd = dp(8) }
-        }
-        buttonLayout.addView(copyButton)
-
-        val restartButton = Button(this).apply {
-            text = "Restart App"
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#6C5CE7"))
-            setPadding(dp(24), dp(12), dp(24), dp(12))
-            setOnClickListener { restartApp() }
-            layoutParams = LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-            ).apply { marginStart = dp(8) }
-        }
-        buttonLayout.addView(restartButton)
-
-        rootLayout.addView(buttonLayout)
-
-        setContentView(rootLayout)
-
-        fullLog = intent.getStringExtra(EXTRA_CRASH_LOG) ?: "No crash log available"
-
-        loadingText.visibility = View.GONE
-        progressBar.visibility = View.GONE
-        logTextView.text = fullLog
     }
 
-    private fun copyLogToClipboard() {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("Crash Log", fullLog)
-        clipboard.setPrimaryClip(clip)
-        Toast.makeText(this, "Crash log copied to clipboard", Toast.LENGTH_SHORT).show()
+    private fun extractExceptionType(log: String): String {
+        val match = Regex("""(?m)^Type:\s*(.+)""").find(log)
+        if (match != null) return match.groupValues[1].trim()
+        val lines = log.lines()
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.contains("Exception") || trimmed.contains("Error")) {
+                return trimmed.substringBefore(":").substringBefore(" ").trim()
+            }
+        }
+        return "UnknownException"
+    }
+
+    private fun extractStacktrace(log: String): String {
+        val stackStart = log.indexOf("at ")
+        if (stackStart == -1) return log
+        return log.substring(stackStart)
     }
 
     private fun restartApp() {
@@ -158,8 +90,242 @@ class CrashActivity : Activity() {
         finish()
         Process.killProcess(Process.myPid())
     }
+}
 
-    private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CrashScreen(
+    crashLog: String,
+    crashMessage: String,
+    exceptionType: String,
+    stacktrace: String,
+    crashThread: String,
+    onRestart: () -> Unit
+) {
+    val context = LocalContext.current
+    var showReportSent by remember { mutableStateOf(false) }
+    var reportEnabled by remember { mutableStateOf(CrashReporter.isOptedIn(context)) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Crash Report",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                navigationIcon = {
+                    Icon(
+                        Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        modifier = Modifier.padding(start = 16.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Error info card
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = exceptionType,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = crashMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(crashThread, fontSize = 11.sp) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Smartphone,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Crash log
+            ElevatedCard(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Stack Trace",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Text(
+                                text = "${stacktrace.lines().size} lines",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = crashLog,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        )
+                    }
+                }
+            }
+
+            // Report switch
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Send anonymous report",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Help improve the app",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = reportEnabled,
+                        onCheckedChange = {
+                            reportEnabled = it
+                            CrashReporter.setOptedIn(context, it)
+                            if (it) {
+                                CrashReporter.reportCrash(
+                                    context = context,
+                                    exceptionType = exceptionType,
+                                    message = crashMessage,
+                                    stacktrace = stacktrace,
+                                    thread = crashThread,
+                                    crashLog = crashLog
+                                )
+                                showReportSent = true
+                            }
+                        }
+                    )
+                }
+            }
+
+            if (showReportSent) {
+                Snackbar(
+                    action = {
+                        TextButton(onClick = { showReportSent = false }) {
+                            Text("OK")
+                        }
+                    }
+                ) {
+                    Text("Report sent successfully")
+                }
+            }
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Crash Log", crashLog)
+                        clipboard.setPrimaryClip(clip)
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Copy Log")
+                }
+
+                Button(
+                    onClick = onRestart,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(Icons.Default.RestartAlt, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Restart")
+                }
+            }
+        }
     }
 }

@@ -57,6 +57,19 @@ impl StringReplacer {
             ));
         }
 
+        // Validate replacement is valid UTF-8
+        if !replacement.is_char_boundary(0) && !replacement.is_empty() {
+            // String is valid UTF-8 if is_char_boundary works for all positions
+            for (i, _) in replacement.char_indices() {
+                if !replacement.is_char_boundary(i) {
+                    return Err(format!(
+                        "Invalid UTF-8 in replacement string at byte position {}",
+                        i
+                    ));
+                }
+            }
+        }
+
         let replacement_bytes = replacement.as_bytes();
         let null_terminated = [replacement_bytes, &[0]].concat();
 

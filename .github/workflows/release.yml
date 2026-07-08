@@ -1,10 +1,10 @@
-name: Release
+name: Release Build
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v1.1.0). Leave empty for auto-increment'
+        description: 'Release tag (e.g. v3.0.0). Leave empty for auto-increment'
         required: false
         type: string
 
@@ -19,12 +19,158 @@ permissions:
 
 jobs:
   build:
-    uses: ./.github/workflows/build.yml
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk
+
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: rust -> target
+
+    - name: Build Rust (arm64-v8a)
+      working-directory: rust
+      run: cargo ndk -t arm64-v8a build --release
+
+    - name: Build Rust (armeabi-v7a)
+      working-directory: rust
+      run: cargo ndk -t armeabi-v7a build --release
+
+    - name: Build Rust (x86_64)
+      working-directory: rust
+      run: cargo ndk -t x86_64 build --release
+
+    - name: Build Rust (x86)
+      working-directory: rust
+      run: cargo ndk -t x86 build --release
+
+    - name: Place native libraries for Gradle
+      run: |
+        mkdir -p app/src/main/jniLibs/arm64-v8a
+        mkdir -p app/src/main/jniLibs/armeabi-v7a
+        mkdir -p app/src/main/jniLibs/x86_64
+        mkdir -p app/src/main/jniLibs/x86
+        cp rust/target/aarch64-linux-android/release/libNeoLibEditor.so app/src/main/jniLibs/arm64-v8a/
+        cp rust/target/armv7-linux-androideabi/release/libNeoLibEditor.so app/src/main/jniLibs/armeabi-v7a/
+        cp rust/target/x86_64-linux-android/release/libNeoLibEditor.so app/src/main/jniLibs/x86_64/
+        cp rust/target/i686-linux-android/release/libNeoLibEditor.so app/src/main/jniLibs/x86/
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    - name: Cache Android SDK components
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/android-sdk/ndk
+          ~/android-sdk/build-tools
+          ~/android-sdk/platforms
+        key: android-sdk-${{ runner.os }}-${{ hashFiles('versions.properties') }}
+        restore-keys: |
+          android-sdk-${{ runner.os }}-
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Cache Gradle build directory
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          .gradle
+        key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties', 'versions.properties') }}
+        restore-keys: |
+          gradle-${{ runner.os }}-
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Release APKs
+      id: build
+      continue-on-error: true
+      run: |
+        ./gradlew assembleRelease --stacktrace 2>&1 | tee build_output.log
+        echo "build_status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+    - name: Check build result
+      id: check
+      run: |
+        if [ "${{ steps.build.outputs.build_status }}" = "0" ]; then
+          echo "success=true" >> $GITHUB_OUTPUT
+        else
+          echo "success=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Upload APK artifacts
+      if: steps.check.outputs.success == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: LibEditor-release-${{ github.run_number }}
+        path: app/build/outputs/apk/release/*.apk
+        retention-days: 30
+
+    - name: Send each APK to Telegram
+      if: steps.check.outputs.success == 'true'
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        BUILD_TIME=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+        COMMIT_MSG=$(echo "${{ github.event.head_commit.message || github.event.pull_request.title || 'N/A' }}" | head -1)
+
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d chat_id="${TELEGRAM_CHAT_ID}" \
+          -d text="✅ RELEASE BUILD SUCCESSFUL%0ATime: ${BUILD_TIME}%0ACommit: ${COMMIT_MSG}%0A%0ASending APKs..."
+
+        for APK in app/build/outputs/apk/release/*.apk; do
+          APK_NAME=$(basename "$APK")
+          APK_SIZE=$(du -h "$APK" | cut -f1)
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+            -F chat_id="${TELEGRAM_CHAT_ID}" \
+            -F document=@"${APK}" \
+            -F caption="${APK_NAME} (${APK_SIZE})"
+        done
+
+    - name: Send failure to Telegram
+      if: steps.check.outputs.success == 'false'
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        COMMIT_MSG=$(echo "${{ github.event.head_commit.message || github.event.pull_request.title || 'N/A' }}" | head -1)
+
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          -d chat_id="${TELEGRAM_CHAT_ID}" \
+          -d text="❌ RELEASE FAILED%0ACommit: ${COMMIT_MSG}%0ALogs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+          -F chat_id="${TELEGRAM_CHAT_ID}" \
+          -F document=@build_output.log \
+          -F caption="Build log"
 
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    if: success()
 
     steps:
       - name: Checkout
@@ -52,7 +198,7 @@ jobs:
           if [ -n "${{ inputs.tag }}" ]; then
             TAG="${{ inputs.tag }}"
           elif [ "${{ steps.latest.outputs.exists }}" = "false" ]; then
-            TAG="v1.0.0"
+            TAG="v3.0.0"
           else
             CURRENT="${{ steps.latest.outputs.tag }}"
 

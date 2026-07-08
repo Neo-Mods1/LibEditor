@@ -425,6 +425,53 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         _successMessage.value = null
     }
 
+    fun exportPatches(): String? {
+        val enabledPatches = _patches.value.filter { it.enabled }
+        if (enabledPatches.isEmpty()) {
+            _errorMessage.value = "No patches to export"
+            return null
+        }
+        return try {
+            val json = kotlinx.serialization.json.Json { prettyPrint = true }
+            json.encodeToString(kotlinx.serialization.builtins.ListSerializer(PatchEntry.serializer()), enabledPatches)
+        } catch (e: Exception) {
+            _errorMessage.value = "Export failed: ${e.message}"
+            null
+        }
+    }
+
+    fun importPatches(jsonString: String): Boolean {
+        return try {
+            val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
+            val imported = json.decodeFromString<List<PatchEntry>>(jsonString)
+            if (imported.isEmpty()) {
+                _errorMessage.value = "No patches found in file"
+                return false
+            }
+            _patches.value = _patches.value + imported.map { it.copy(id = System.currentTimeMillis().toString() + Math.random().toString()) }
+            _successMessage.value = "Imported ${imported.size} patch(es)"
+            true
+        } catch (e: Exception) {
+            _errorMessage.value = "Import failed: ${e.message}"
+            false
+        }
+    }
+
+    fun exportStringEdits(): String? {
+        val enabledEdits = _stringEdits.value.filter { it.enabled }
+        if (enabledEdits.isEmpty()) {
+            _errorMessage.value = "No string edits to export"
+            return null
+        }
+        return try {
+            val json = kotlinx.serialization.json.Json { prettyPrint = true }
+            json.encodeToString(kotlinx.serialization.builtins.ListSerializer(StringEditEntry.serializer()), enabledEdits)
+        } catch (e: Exception) {
+            _errorMessage.value = "Export failed: ${e.message}"
+            null
+        }
+    }
+
     private fun parseHexOffset(hex: String): Long? {
         return try {
             val cleaned = hex.trim().removePrefix("0x").removePrefix("0X").replace(" ", "")

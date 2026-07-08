@@ -249,6 +249,12 @@ fun ReplaceStringDialog(
 ) {
     var replacement by remember { mutableStateOf("") }
 
+    val replacementBytes = remember(replacement) {
+        replacement.toByteArray()
+    }
+    val isLonger = replacementBytes.size > string.length
+    val isEmpty = replacement.isBlank()
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Queue String Edit") },
@@ -304,18 +310,43 @@ fun ReplaceStringDialog(
                     label = { Text("Replacement") },
                     modifier = Modifier.fillMaxWidth(),
                     supportingText = {
-                        val newLen = replacement.toByteArray().size
-                        if (newLen > string.length) {
+                        if (isLonger) {
                             Text(
-                                text = "Longer string - will redirect to free space",
+                                text = "Longer string - will redirect to free space (${replacementBytes.size}/${string.length}B)",
                                 color = MaterialTheme.colorScheme.tertiary
                             )
                         } else {
-                            Text("${newLen}/${string.length} bytes")
+                            Text("${replacementBytes.size}/${string.length} bytes")
                         }
                     },
+                    isError = isLonger,
                     shape = RoundedCornerShape(12.dp)
                 )
+
+                if (isLonger) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                            Text(
+                                text = "Longer strings will be placed in free space and pointer references will be updated",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {

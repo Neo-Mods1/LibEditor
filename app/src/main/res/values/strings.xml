@@ -17,6 +17,8 @@
     <string name="back">Back</string>
     <string name="tab_patches">Address Patching</string>
     <string name="tab_strings">String Editor</string>
+    <string name="tab_hex">Hex</string>
+    <string name="tab_mods">Mods</string>
     <string name="architecture">Architecture</string>
     <string name="file_size">File Size</string>
     <string name="sections">Sections</string>
@@ -61,4 +63,19 @@
     <string name="report_bugs_contact">@neomods</string>
     <string name="made_with">Made with Rust by Neo Mods</string>
     <string name="app_description">ELF shared library editor for Android — patch addresses and replace strings</string>
+    <string name="hex_viewer">Hex Viewer</string>
+    <string name="load_bytes">Load Bytes</string>
+    <string name="hex_data">Hex Data</string>
+    <string name="export">Export</string>
+    <string name="import_patches">Import</string>
+    <string name="import_patches_title">Import Patches</string>
+    <string name="import_patches_desc">Paste patch JSON below:</string>
+    <string name="queued_modifications">Queued Modifications</string>
+    <string name="patches">Patches</string>
+    <string name="string_edits">String Edits</string>
+    <string name="no_modifications">No modifications yet</string>
+    <string name="no_modifications_desc">Add patches or queue string edits to see them here</string>
+    <string name="clear_all">Clear All</string>
+    <string name="offset">Offset</string>
+    <string name="bytes_label">Bytes</string>
 </resources>
