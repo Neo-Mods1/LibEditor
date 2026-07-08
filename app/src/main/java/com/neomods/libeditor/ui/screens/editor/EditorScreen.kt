@@ -113,11 +113,6 @@ fun EditorScreen(
                         Tab(
                             selected = selectedTab == 2,
                             onClick = { selectedTab = 2 },
-                            text = { Text(stringResource(R.string.tab_hex)) }
-                        )
-                        Tab(
-                            selected = selectedTab == 3,
-                            onClick = { selectedTab = 3 },
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(stringResource(R.string.tab_mods))
@@ -143,8 +138,7 @@ fun EditorScreen(
                         when (tab) {
                             0 -> AddressPatchingTab(viewModel)
                             1 -> StringEditorTab(viewModel)
-                            2 -> HexViewerTab(viewModel)
-                            3 -> ModificationsTab(viewModel)
+                            2 -> ModificationsTab(viewModel)
                         }
                     }
                 } else {
