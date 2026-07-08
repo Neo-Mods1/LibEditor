@@ -62,6 +62,12 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
     private val _stringSearchQuery = MutableStateFlow("")
     val stringSearchQuery: StateFlow<String> = _stringSearchQuery.asStateFlow()
 
+    private val _searchResults = MutableStateFlow<List<Pair<Long, ByteArray>>>(emptyList())
+    val searchResults: StateFlow<List<Pair<Long, ByteArray>>> = _searchResults.asStateFlow()
+
+    private val _sections = MutableStateFlow<List<ElfSection>>(emptyList())
+    val sections: StateFlow<List<ElfSection>> = _sections.asStateFlow()
+
     init {
         val jniBridge = JniBridge(application)
         repository = LibEditorRepository(jniBridge, application)
@@ -80,6 +86,7 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
                 _stringEdits.value = emptyList()
                 _extractedStrings.value = emptyList()
                 _filteredStrings.value = emptyList()
+                loadSections()
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Failed to load library"
             }
@@ -389,16 +396,37 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
+            _loadingMessage.value = "Extracting strings..."
             val result = withContext(Dispatchers.IO) {
                 repository.extractStrings()
             }
             result.onSuccess { strings ->
                 _extractedStrings.value = strings
                 _filteredStrings.value = strings
+                if (strings.size > 5000) {
+                    _successMessage.value = "Extracted ${strings.size} strings (showing all)"
+                } else {
+                    _successMessage.value = "Extracted ${strings.size} strings"
+                }
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Failed to extract strings"
             }
+            _loadingMessage.value = null
             _isLoading.value = false
+        }
+    }
+
+    private val _loadingMessage = MutableStateFlow<String?>(null)
+    val loadingMessage: StateFlow<String?> = _loadingMessage.asStateFlow()
+
+    fun loadSections() {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repository.loadSections()
+            }
+            result.onSuccess { sections ->
+                _sections.value = sections
+            }
         }
     }
 
@@ -423,6 +451,68 @@ class LibEditorViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun clearSuccess() {
         _successMessage.value = null
+    }
+
+    fun batchReplaceStrings(find: String, replacement: String) {
+        val strings = _extractedStrings.value
+        if (strings.isEmpty()) {
+            _errorMessage.value = "No strings extracted"
+            return
+        }
+        if (find.isBlank()) {
+            _errorMessage.value = "Search string cannot be empty"
+            return
+        }
+        val matches = strings.filter { it.value.contains(find, ignoreCase = true) }
+        if (matches.isEmpty()) {
+            _errorMessage.value = "No matches found for \"$find\""
+            return
+        }
+        var count = 0
+        for (match in matches) {
+            val newValue = match.value.replace(find, replacement, ignoreCase = true)
+            if (newValue != match.value) {
+                val entry = StringEditEntry(
+                    offset = match.offset,
+                    originalLength = match.length,
+                    replacement = newValue,
+                    originalValue = match.value
+                )
+                _stringEdits.value = _stringEdits.value + entry
+                count++
+            }
+        }
+        _successMessage.value = "Queued $count string edit(s)"
+    }
+
+    fun searchBytes(pattern: String) {
+        val cleaned = pattern.replace(" ", "").replace("0x", "", ignoreCase = true)
+        if (cleaned.isEmpty() || cleaned.length % 2 != 0 || !cleaned.all { it in '0'..'9' || it in 'A'..'F' || it in 'a'..'f' }) {
+            _errorMessage.value = "Invalid hex pattern"
+            return
+        }
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            val result = withContext(Dispatchers.IO) {
+                repository.searchBytes(cleaned)
+            }
+            result.onSuccess { matches ->
+                _searchResults.value = matches
+                if (matches.isEmpty()) {
+                    _errorMessage.value = "No matches found"
+                } else {
+                    _successMessage.value = "Found ${matches.size} match(es)"
+                }
+            }.onFailure { e ->
+                _errorMessage.value = e.message ?: "Search failed"
+            }
+            _isLoading.value = false
+        }
+    }
+
+    fun clearSearchResults() {
+        _searchResults.value = emptyList()
     }
 
     fun exportPatches(): String? {

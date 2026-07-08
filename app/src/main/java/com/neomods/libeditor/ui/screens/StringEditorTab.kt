@@ -25,8 +25,11 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
     val selectedString by viewModel.selectedString.collectAsState()
     val searchQuery by viewModel.stringSearchQuery.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val loadingMessage by viewModel.loadingMessage.collectAsState()
 
     var showReplaceDialog by remember { mutableStateOf(false) }
+    var showBatchReplaceDialog by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -35,11 +38,25 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "String Editor",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "String Editor",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(onClick = { showSearchDialog = true }) {
+                    Icon(Icons.Default.Pattern, contentDescription = "Search Bytes")
+                }
+                IconButton(onClick = { showBatchReplaceDialog = true }) {
+                    Icon(Icons.Default.FindReplace, contentDescription = "Batch Replace")
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -80,35 +97,39 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "No strings extracted yet",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Extract strings from the loaded library to browse and edit them",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { viewModel.extractStrings() },
-                        enabled = !isLoading,
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        } else {
+                    if (isLoading && loadingMessage != null) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            strokeWidth = 3.dp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = loadingMessage!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = "No strings extracted yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Extract strings from the loaded library to browse and edit them",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.extractStrings() },
+                            enabled = !isLoading,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
+                            Text("Extract Strings")
                         }
-                        Text("Extract Strings")
                     }
                 }
             }
@@ -239,6 +260,133 @@ fun StringEditorTab(viewModel: LibEditorViewModel) {
             }
         )
     }
+
+    if (showBatchReplaceDialog) {
+        BatchReplaceDialog(
+            onDismiss = { showBatchReplaceDialog = false },
+            onReplace = { find, replacement ->
+                viewModel.batchReplaceStrings(find, replacement)
+                showBatchReplaceDialog = false
+            }
+        )
+    }
+
+    if (showSearchDialog) {
+        ByteSearchDialog(
+            onDismiss = { showSearchDialog = false },
+            onSearch = { pattern ->
+                viewModel.searchBytes(pattern)
+                showSearchDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun BatchReplaceDialog(
+    onDismiss: () -> Unit,
+    onReplace: (String, String) -> Unit
+) {
+    var find by remember { mutableStateOf("") }
+    var replacement by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Batch Replace") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Replace all occurrences of a string",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = find,
+                    onValueChange = { find = it },
+                    label = { Text("Find") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                OutlinedTextField(
+                    value = replacement,
+                    onValueChange = { replacement = it },
+                    label = { Text("Replace with") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onReplace(find, replacement) },
+                enabled = find.isNotBlank()
+            ) {
+                Text("Replace All")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ByteSearchDialog(
+    onDismiss: () -> Unit,
+    onSearch: (String) -> Unit
+) {
+    var pattern by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Search Bytes") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Search for hex byte patterns in the binary",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = pattern,
+                    onValueChange = { pattern = it },
+                    label = { Text("Hex Pattern") },
+                    placeholder = { Text("FF 83 00 D1") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        text = "Example: FF 83 00 D1 or 4889E5",
+                        modifier = Modifier.padding(8.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSearch(pattern.replace(" ", "")) },
+                enabled = pattern.isNotBlank() && pattern.replace(" ", "").length % 2 == 0
+            ) {
+                Text("Search")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

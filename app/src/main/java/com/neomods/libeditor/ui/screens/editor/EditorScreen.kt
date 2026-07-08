@@ -34,18 +34,28 @@ fun EditorScreen(
     val successMessage by viewModel.successMessage.collectAsState()
     val patches by viewModel.patches.collectAsState()
     val stringEdits by viewModel.stringEdits.collectAsState()
+    val loadingMessage by viewModel.loadingMessage.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var infoSheetOffset by remember { mutableFloatStateOf(0f) }
     var showInfoSheet by remember { mutableStateOf(false) }
 
     val totalModifications = patches.size + stringEdits.size
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(libPath) {
         viewModel.loadLibrary(libPath)
     }
 
+    LaunchedEffect(successMessage) {
+        successMessage?.let {
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            viewModel.clearSuccess()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -125,6 +135,11 @@ fun EditorScreen(
                                 }
                             }
                         )
+                        Tab(
+                            selected = selectedTab == 3,
+                            onClick = { selectedTab = 3 },
+                            text = { Text(stringResource(R.string.tab_info)) }
+                        )
                     }
 
                     AnimatedContent(
@@ -139,6 +154,7 @@ fun EditorScreen(
                             0 -> AddressPatchingTab(viewModel)
                             1 -> StringEditorTab(viewModel)
                             2 -> ModificationsTab(viewModel)
+                            3 -> SectionsTab(viewModel)
                         }
                     }
                 } else {
@@ -147,7 +163,17 @@ fun EditorScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator()
+                                if (loadingMessage != null) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = loadingMessage!!,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }

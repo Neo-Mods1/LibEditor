@@ -159,4 +159,38 @@ class JniBridge(private val context: Context) {
         val parent = file.parent ?: ""
         return File(parent, "${name}_${suffix}.$ext").absolutePath
     }
+
+    fun searchBytes(filePath: String, hexPattern: String): Result<List<Pair<Long, ByteArray>>> = try {
+        val response = nativeSearchBytes(filePath, hexPattern)
+        if (isErrorJson(response)) {
+            Result.failure(Exception(getErrorMessage(response)))
+        } else {
+            val obj = json.decodeFromString<JsonObject>(response)
+            val success = obj["success"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: false
+            if (success) {
+                val matchesJson = obj["matches"]?.toString() ?: "[]"
+                val matches = json.decodeFromString<List<SearchResult>>(matchesJson)
+                Result.success(matches.map { Pair(it.offset, it.bytes.map { b -> b.toByte() }.toByteArray()) })
+            } else {
+                Result.failure(Exception(obj["error"]?.jsonPrimitive?.content ?: "Search failed"))
+            }
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    fun loadSections(filePath: String): Result<List<ElfSection>> = try {
+        val response = nativeLoadSections(filePath)
+        if (isErrorJson(response)) {
+            Result.failure(Exception(getErrorMessage(response)))
+        } else {
+            val sections = json.decodeFromString<List<ElfSection>>(response)
+            Result.success(sections)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    private external fun nativeSearchBytes(filePath: String, hexPattern: String): String
+    private external fun nativeLoadSections(filePath: String): String
 }

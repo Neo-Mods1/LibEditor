@@ -257,3 +257,97 @@ pub extern "C" fn Java_com_neomods_libeditor_service_JniBridge_nativeReplaceStri
         }
     }
 }
+
+#[no_mangle]
+pub extern "C" fn Java_com_neomods_libeditor_service_JniBridge_nativeSearchBytes(
+    mut env: JNIEnv,
+    _class: JClass,
+    file_path: JString,
+    hex_pattern: JString,
+) -> jstring {
+    let path: String = match env.get_string(&file_path) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            return to_jstring(&mut env, r#"{"success":false,"error":"Invalid file path"}"#);
+        }
+    };
+
+    let pattern_str: String = match env.get_string(&hex_pattern) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            return to_jstring(&mut env, r#"{"success":false,"error":"Invalid pattern"}"#);
+        }
+    };
+
+    let pattern_bytes = match hex::decode(&pattern_str) {
+        Ok(b) => b,
+        Err(_) => {
+            return to_jstring(&mut env, r#"{"success":false,"error":"Invalid hex pattern"}"#);
+        }
+    };
+
+    match ElfData::open(Path::new(&path)) {
+        Ok(elf) => {
+            let mut matches = Vec::new();
+            let window_size = pattern_bytes.len();
+            if window_size == 0 || window_size > elf.bytes.len() {
+                let json = serde_json::json!({ "success": true, "matches": [] });
+                return to_jstring(&mut env, &json.to_string());
+            }
+            for i in 0..=(elf.bytes.len() - window_size) {
+                if &elf.bytes[i..i + window_size] == pattern_bytes.as_slice() {
+                    let matched_bytes: Vec<i64> = elf.bytes[i..i + window_size]
+                        .iter()
+                        .map(|&b| b as i64)
+                        .collect();
+                    matches.push(serde_json::json!({
+                        "offset": i as i64,
+                        "bytes": matched_bytes
+                    }));
+                    if matches.len() >= 1000 {
+                        break;
+                    }
+                }
+            }
+            let json = serde_json::json!({ "success": true, "matches": matches });
+            to_jstring(&mut env, &json.to_string())
+        }
+        Err(e) => {
+            let json = serde_json::json!({ "success": false, "error": format!("Failed to open library: {}", e) });
+            to_jstring(&mut env, &json.to_string())
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn Java_com_neomods_libeditor_service_JniBridge_nativeLoadSections(
+    mut env: JNIEnv,
+    _class: JClass,
+    file_path: JString,
+) -> jstring {
+    let path: String = match env.get_string(&file_path) {
+        Ok(s) => s.into(),
+        Err(_) => {
+            return to_jstring(&mut env, r#"{"success":false,"error":"Invalid file path"}"#);
+        }
+    };
+
+    match ElfData::open(Path::new(&path)) {
+        Ok(elf) => {
+            let sections: Vec<serde_json::Value> = elf.sections.iter().map(|s| {
+                serde_json::json!({
+                    "name": s.name,
+                    "offset": s.offset,
+                    "size": s.size,
+                    "type": s.section_type
+                })
+            }).collect();
+            let json = serde_json::to_string(&sections).unwrap_or_else(|_| "[]".to_string());
+            to_jstring(&mut env, &json)
+        }
+        Err(e) => {
+            let json = serde_json::json!({ "error": e.to_string() });
+            to_jstring(&mut env, &json.to_string())
+        }
+    }
+}

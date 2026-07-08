@@ -27,10 +27,18 @@ pub struct ElfInfo {
     pub entry_point: u64,
 }
 
+pub struct SectionInfo {
+    pub name: String,
+    pub offset: u64,
+    pub size: u64,
+    pub section_type: String,
+}
+
 pub struct ElfData {
     pub bytes: Vec<u8>,
     pub info: ElfInfo,
     pub load_segments: Vec<LoadSegment>,
+    pub sections: Vec<SectionInfo>,
     pub is_64bit: bool,
 }
 
@@ -44,17 +52,18 @@ pub struct LoadSegment {
 impl ElfData {
     pub fn open(path: &Path) -> Result<Self, ElfError> {
         let bytes = fs::read(path)?;
-        let (info, load_segments, is_64bit) = Self::parse_info(&bytes, path)?;
+        let (info, load_segments, sections, is_64bit) = Self::parse_info(&bytes, path)?;
 
         Ok(Self {
             bytes,
             info,
             load_segments,
+            sections,
             is_64bit,
         })
     }
 
-    fn parse_info(bytes: &[u8], path: &Path) -> Result<(ElfInfo, Vec<LoadSegment>, bool), ElfError> {
+    fn parse_info(bytes: &[u8], path: &Path) -> Result<(ElfInfo, Vec<LoadSegment>, Vec<SectionInfo>, bool), ElfError> {
         match Object::parse(bytes)
             .map_err(|e| ElfError::Parse(e.to_string()))?
         {
@@ -77,6 +86,34 @@ impl ElfData {
                     })
                     .collect();
 
+                let sections: Vec<SectionInfo> = elf
+                    .section_headers
+                    .iter()
+                    .map(|sh| {
+                        let name = elf.shdr_strtab.get_at(sh.sh_name).unwrap_or("").to_string();
+                        let section_type = match sh.sh_type {
+                            0 => "SHT_NULL",
+                            1 => "SHT_PROGBITS",
+                            2 => "SHT_SYMTAB",
+                            3 => "SHT_STRTAB",
+                            4 => "SHT_RELA",
+                            5 => "SHT_HASH",
+                            6 => "SHT_DYNAMIC",
+                            7 => "SHT_NOTE",
+                            8 => "SHT_NOBITS",
+                            9 => "SHT_REL",
+                            11 => "SHT_DYNSYM",
+                            _ => "OTHER",
+                        }.to_string();
+                        SectionInfo {
+                            name,
+                            offset: sh.sh_offset,
+                            size: sh.sh_size,
+                            section_type,
+                        }
+                    })
+                    .collect();
+
                 let info = ElfInfo {
                     name,
                     architecture: arch,
@@ -85,7 +122,7 @@ impl ElfData {
                     entry_point: elf.entry,
                 };
 
-                Ok((info, load_segments, elf.is_64))
+                Ok((info, load_segments, sections, elf.is_64))
             }
             _ => Err(ElfError::Parse("Not an ELF file".to_string())),
         }

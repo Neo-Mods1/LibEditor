@@ -72,4 +72,8 @@
     <string name="no_modifications">No modifications yet</string>
     <string name="no_modifications_desc">Add patches or queue string edits to see them here</string>
     <string name="clear_all">Clear All</string>
+    <string name="tab_info">Info</string>
+    <string name="batch_replace">Batch Replace</string>
+    <string name="search_bytes">Search Bytes</string>
+    <string name="loading">Loading...</string>
 </resources>

@@ -100,3 +100,17 @@ data class NativeStringResult(
     val newStringOffset: Long = 0L,
     val pointersUpdated: Int = 0
 )
+
+@Serializable
+data class ElfSection(
+    val name: String = "",
+    val offset: Long = 0L,
+    val size: Long = 0L,
+    val type: String = ""
+)
+
+@Serializable
+data class SearchResult(
+    val offset: Long = 0L,
+    val bytes: List<Int> = emptyList()
+)

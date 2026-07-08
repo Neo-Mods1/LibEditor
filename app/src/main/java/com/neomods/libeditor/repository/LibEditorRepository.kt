@@ -110,4 +110,14 @@ class LibEditorRepository(private val jniBridge: JniBridge, private val context:
         currentFilePath = internalPath
         return Result.success(internalPath)
     }
+
+    fun searchBytes(hexPattern: String): Result<List<Pair<Long, ByteArray>>> {
+        val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
+        return jniBridge.searchBytes(path, hexPattern)
+    }
+
+    fun loadSections(): Result<List<ElfSection>> {
+        val path = currentFilePath ?: return Result.failure(IllegalStateException("No file loaded"))
+        return jniBridge.loadSections(path)
+    }
 }
